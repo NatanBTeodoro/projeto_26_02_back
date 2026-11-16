@@ -11,8 +11,10 @@ import org.springframework.web.multipart.MultipartFile;
 import com.projeto.dto.ImportacaoCardapioDTO;
 import com.projeto.entity.Categoria;
 import com.projeto.entity.Produto;
+import com.projeto.entity.Restaurante;
 import com.projeto.repository.CategoriaRepository;
 import com.projeto.repository.ProdutoRepository;
+import com.projeto.seguranca.EscopoOperacao;
 import com.projeto.util.exception.RegraDeNegocioException;
 
 @Service
@@ -20,10 +22,15 @@ public class ImportacaoCardapioService {
 
 	private final CategoriaRepository categoriaRepository;
 	private final ProdutoRepository produtoRepository;
+	private final EscopoOperacao escopo;
 
-	public ImportacaoCardapioService(CategoriaRepository categoriaRepository, ProdutoRepository produtoRepository) {
+	public ImportacaoCardapioService(
+			CategoriaRepository categoriaRepository,
+			ProdutoRepository produtoRepository,
+			EscopoOperacao escopo) {
 		this.categoriaRepository = categoriaRepository;
 		this.produtoRepository = produtoRepository;
+		this.escopo = escopo;
 	}
 
 	public byte[] modelo() {
@@ -37,16 +44,17 @@ public class ImportacaoCardapioService {
 
 	@Transactional
 	public ImportacaoCardapioDTO.Resultado confirmar(MultipartFile arquivo, ImportacaoCardapioDTO.Modo modo) {
+		Restaurante restaurante = escopo.exigirOperavel();
 		ImportacaoCardapioDTO.Previa previa = previa(arquivo);
 		if (!ImportacaoCardapio.deveAplicar(modo, previa.resumo().erros())) {
 			return new ImportacaoCardapioDTO.Resultado(false, 0, previa.linhas(), previa.resumo());
 		}
 		Map<String, Categoria> categorias = new LinkedHashMap<>();
-		for (Categoria categoria : categoriaRepository.findAll()) {
+		for (Categoria categoria : categoriaRepository.findByRestauranteId(restaurante.getId())) {
 			categorias.putIfAbsent(chave(categoria.getNome()), categoria);
 		}
 		Map<String, Produto> produtos = new LinkedHashMap<>();
-		for (Produto produto : produtoRepository.findAll()) {
+		for (Produto produto : produtoRepository.findByRestauranteId(restaurante.getId())) {
 			produtos.putIfAbsent(chave(produto.getCategoria().getNome()) + "|" + chave(produto.getNome()), produto);
 		}
 
@@ -60,6 +68,7 @@ public class ImportacaoCardapioService {
 				categoria = new Categoria();
 				categoria.setNome(linha.categoria());
 				categoria.setAtiva(true);
+				categoria.setRestaurante(restaurante);
 				categoria = categoriaRepository.save(categoria);
 				categorias.put(chave(categoria.getNome()), categoria);
 			} else if (!categoria.isAtiva()) {
@@ -72,6 +81,7 @@ public class ImportacaoCardapioService {
 				produto.setCategoria(categoria);
 				produto.setNome(linha.nome());
 				produto.setAtivo(true);
+				produto.setRestaurante(restaurante);
 				produtos.put(chaveProduto, produto);
 			}
 			produto.setPrecoAtual(linha.preco());
@@ -86,6 +96,7 @@ public class ImportacaoCardapioService {
 		if (arquivo == null || arquivo.isEmpty()) {
 			throw new RegraDeNegocioException("Envie um arquivo .csv ou .xlsx");
 		}
+		Restaurante restaurante = escopo.restauranteDoContexto();
 		try {
 			LeitorPlanilhaCardapio.Leitura leitura = LeitorPlanilhaCardapio.ler(arquivo.getOriginalFilename(), arquivo.getBytes());
 			if (leitura.erro() != null) {
@@ -93,10 +104,10 @@ public class ImportacaoCardapioService {
 			}
 			return ImportacaoCardapio.prever(
 					leitura.linhas(),
-					categoriaRepository.findAll().stream()
+					categoriaRepository.findByRestauranteId(restaurante.getId()).stream()
 							.map(categoria -> new ImportacaoCardapio.CategoriaConhecida(categoria.getNome(), categoria.isAtiva()))
 							.toList(),
-					produtoRepository.findAll().stream()
+					produtoRepository.findByRestauranteId(restaurante.getId()).stream()
 							.map(produto -> new ImportacaoCardapio.ProdutoConhecido(
 									produto.getCategoria().getNome(),
 									produto.getNome(),

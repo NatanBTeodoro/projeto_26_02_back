@@ -12,19 +12,23 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.projeto.dto.AnaliseDTO;
 import com.projeto.entity.Pedido;
+import com.projeto.entity.Restaurante;
 import com.projeto.repository.PedidoRepository;
+import com.projeto.seguranca.EscopoOperacao;
 import com.projeto.util.exception.RegraDeNegocioException;
 
 @Service
 @Transactional(readOnly = true)
 public class AnaliseService {
 
-	static final ZoneId FUSO = ZoneId.of("America/Sao_Paulo");
+	public static final ZoneId FUSO = ZoneId.of("America/Sao_Paulo");
 
 	private final PedidoRepository pedidoRepository;
+	private final EscopoOperacao escopo;
 
-	public AnaliseService(PedidoRepository pedidoRepository) {
+	public AnaliseService(PedidoRepository pedidoRepository, EscopoOperacao escopo) {
 		this.pedidoRepository = pedidoRepository;
+		this.escopo = escopo;
 	}
 
 	public AnaliseDTO.Response consultar(LocalDate de, LocalDate ate) {
@@ -34,12 +38,20 @@ public class AnaliseService {
 		if (de.isAfter(ate)) {
 			throw new RegraDeNegocioException("A data inicial precisa ser anterior ou igual à final");
 		}
+		Restaurante restaurante = escopo.restauranteDoContexto();
 		Instant inicio = de.atStartOfDay(FUSO).toInstant();
+
 		Instant fim = ate.plusDays(1).atStartOfDay(FUSO).toInstant();
-		List<Pedido> pedidos = pedidoRepository.findByDataHoraGreaterThanEqualAndDataHoraLessThan(inicio, fim);
+
+		List<Pedido> pedidos = pedidoRepository.findByRestauranteIdAndDataHoraGreaterThanEqualAndDataHoraLessThan(
+				restaurante.getId(), inicio, fim);
+
 		List<ClassificadorCardapio.Linha> linhas = LeituraVendas.linhasAtivas(pedidos);
+
 		long quantidadePedidos = LeituraVendas.contarPedidosAtivos(pedidos);
+		
 		BigDecimal receita = ClassificadorCardapio.receita(linhas);
+		
 		BigDecimal ticket = quantidadePedidos == 0
 				? BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP)
 				: receita.divide(BigDecimal.valueOf(quantidadePedidos), 2, RoundingMode.HALF_UP);

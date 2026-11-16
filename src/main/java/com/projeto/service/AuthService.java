@@ -10,13 +10,17 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import org.springframework.security.crypto.password.PasswordEncoder;
+
 import com.projeto.dto.LoginRequest;
+import com.projeto.dto.SenhaDTO;
 import com.projeto.dto.UsuarioDTO;
 import com.projeto.entity.Usuario;
 import com.projeto.repository.UsuarioRepository;
 import com.projeto.seguranca.SessaoAtual;
 import com.projeto.seguranca.UsuarioDetails;
 import com.projeto.util.exception.NaoAutenticadoException;
+import com.projeto.util.exception.RegraDeNegocioException;
 
 @Service
 public class AuthService {
@@ -24,14 +28,17 @@ public class AuthService {
 	private final AuthenticationManager authenticationManager;
 	private final UsuarioRepository usuarioRepository;
 	private final SessaoAtual sessaoAtual;
+	private final PasswordEncoder passwordEncoder;
 
 	public AuthService(
 			AuthenticationManager authenticationManager,
 			UsuarioRepository usuarioRepository,
-			SessaoAtual sessaoAtual) {
+			SessaoAtual sessaoAtual,
+			PasswordEncoder passwordEncoder) {
 		this.authenticationManager = authenticationManager;
 		this.usuarioRepository = usuarioRepository;
 		this.sessaoAtual = sessaoAtual;
+		this.passwordEncoder = passwordEncoder;
 	}
 
 	@Transactional
@@ -52,8 +59,25 @@ public class AuthService {
 		return UsuarioDTO.Sessao.de(usuarioRepository.save(usuario));
 	}
 
+	@Transactional(readOnly = true)
 	public UsuarioDTO.Response eu() {
-		return UsuarioDTO.Response.de(sessaoAtual.exigir());
+		return UsuarioDTO.Response.de(carregar());
+	}
+
+	@Transactional
+	public void trocarSenha(SenhaDTO.Troca dto) {
+		Usuario usuario = carregar();
+		if (!passwordEncoder.matches(dto.senhaAtual(), usuario.getSenhaHash())) {
+			throw new RegraDeNegocioException("Senha atual incorreta");
+		}
+		usuario.setSenhaHash(passwordEncoder.encode(dto.senhaNova()));
+		usuarioRepository.save(usuario);
+	}
+
+	private Usuario carregar() {
+		Long id = sessaoAtual.exigir().id();
+		return usuarioRepository.findById(id)
+				.orElseThrow(() -> new NaoAutenticadoException("Autenticação necessária"));
 	}
 
 	@Transactional

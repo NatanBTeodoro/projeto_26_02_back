@@ -2,8 +2,6 @@ package com.projeto.dto;
 
 import com.projeto.entity.Usuario;
 import com.projeto.entity.enums.Perfil;
-import com.projeto.seguranca.UsuarioAtual;
-import com.projeto.seguranca.UsuarioDetails;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -16,38 +14,64 @@ public final class UsuarioDTO {
 	}
 
 	public record Create(
+			@NotBlank(message = "Informe o nome") @Size(max = 120) String nome,
 			@NotBlank(message = "Informe o e-mail") @Email(message = "Informe um e-mail válido") @Size(max = 255) String email,
 			@NotBlank(message = "Informe a senha") @Size(min = 6, max = 72, message = "A senha precisa ter entre 6 e 72 caracteres") String senha,
-			@NotNull(message = "Informe o perfil") Perfil perfil) {
+			@NotNull(message = "Informe o perfil") Perfil perfil,
+			Long restauranteId) {
 	}
 
 	public record Update(
+			@Size(max = 120) String nome,
 			@Email(message = "Informe um e-mail válido") @Size(max = 255) String email,
-			@Size(min = 6, max = 72, message = "A senha precisa ter entre 6 e 72 caracteres") String senha,
-			Perfil perfil,
 			Boolean ativo) {
 	}
 
-	public record Sessao(Long id, String email, Perfil perfil, boolean ativo, String token) {
+	public record Sessao(
+			Long id,
+			String nome,
+			String email,
+			Perfil perfil,
+			boolean ativo,
+			String token,
+			Long restauranteId,
+			String restauranteNome) {
 
 		public static Sessao de(Usuario usuario) {
-			return new Sessao(usuario.getId(), usuario.getEmail(), usuario.getPerfil(), usuario.isAtivo(), usuario.getTokenAcesso());
+			Long restauranteId = usuario.getRestaurante() == null ? null : usuario.getRestaurante().getId();
+			String restauranteNome = usuario.getRestaurante() == null ? null : usuario.getRestaurante().getNome();
+			return new Sessao(
+					usuario.getId(),
+					usuario.getNome(),
+					usuario.getEmail(),
+					usuario.getPerfil(),
+					usuario.isAtivo(),
+					usuario.getTokenAcesso(),
+					restauranteId,
+					restauranteNome);
 		}
 	}
 
-	public record Response(Long id, String email, Perfil perfil, boolean ativo) {
+	public record Response(
+			Long id,
+			String nome,
+			String email,
+			Perfil perfil,
+			boolean ativo,
+			Long restauranteId,
+			String restauranteNome) {
 
 		public static Response de(Usuario usuario) {
-			return new Response(usuario.getId(), usuario.getEmail(), usuario.getPerfil(), usuario.isAtivo());
-		}
-
-		public static Response de(UsuarioDetails detalhes) {
-			UsuarioAtual atual = detalhes.atual();
-			return new Response(atual.id(), atual.email(), atual.perfil(), true);
-		}
-
-		public static Response de(UsuarioAtual atual) {
-			return new Response(atual.id(), atual.email(), atual.perfil(), true);
+			Long restauranteId = usuario.getRestaurante() == null ? null : usuario.getRestaurante().getId();
+			String restauranteNome = usuario.getRestaurante() == null ? null : usuario.getRestaurante().getNome();
+			return new Response(
+					usuario.getId(),
+					usuario.getNome(),
+					usuario.getEmail(),
+					usuario.getPerfil(),
+					usuario.isAtivo(),
+					restauranteId,
+					restauranteNome);
 		}
 	}
 }

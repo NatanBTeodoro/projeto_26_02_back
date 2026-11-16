@@ -42,7 +42,13 @@ class AcessoApiTest {
 
 	@Test
 	@WithMockUser(roles = "GESTOR")
-	void gestorEmUsuariosRetorna403() throws Exception {
+	void gestorEmUsuariosPassaDoFiltro() throws Exception {
+		mockMvc.perform(get("/api/usuarios")).andExpect(status().isOk());
+	}
+
+	@Test
+	@WithMockUser(roles = "USUARIO")
+	void usuarioEmUsuariosRetorna403() throws Exception {
 		mockMvc.perform(get("/api/usuarios")).andExpect(status().isForbidden());
 	}
 

@@ -24,4 +24,19 @@ public final class RegrasPedido {
 			throw new RegraDeNegocioException("A data do pedido não pode ser futura");
 		}
 	}
+
+	public static void validarVenda(
+			Instant dataHora,
+			Integer mesa,
+			String nomeCliente,
+			List<PedidoDTO.ItemCreate> itens,
+			Instant agora) {
+		validar(dataHora, itens, agora);
+		if (mesa == null || mesa < 1) {
+			throw new RegraDeNegocioException("Informe o número da mesa");
+		}
+		if (nomeCliente == null || nomeCliente.isBlank()) {
+			throw new RegraDeNegocioException("Informe o nome do cliente");
+		}
+	}
 }

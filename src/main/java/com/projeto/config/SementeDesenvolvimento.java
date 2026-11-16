@@ -40,11 +40,12 @@ public class SementeDesenvolvimento implements ApplicationRunner {
 		if (usuarioRepository.count() > 0) {
 			return;
 		}
-		Usuario administrador = new Usuario();
-		administrador.setEmail(email.trim().toLowerCase(Locale.ROOT));
-		administrador.setSenhaHash(passwordEncoder.encode(senha));
-		administrador.setPerfil(Perfil.ADMINISTRADOR);
-		administrador.setAtivo(true);
-		usuarioRepository.save(administrador);
+		Usuario ti = new Usuario();
+		ti.setNome("Equipe de TI");
+		ti.setEmail(email.trim().toLowerCase(Locale.ROOT));
+		ti.setSenhaHash(passwordEncoder.encode(senha));
+		ti.setPerfil(Perfil.TI);
+		ti.setAtivo(true);
+		usuarioRepository.save(ti);
 	}
 }

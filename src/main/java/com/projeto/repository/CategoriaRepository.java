@@ -9,4 +9,8 @@ import com.projeto.entity.Categoria;
 public interface CategoriaRepository extends JpaRepository<Categoria, Long> {
 
 	List<Categoria> findAllByOrderByNomeAsc();
+
+	List<Categoria> findByRestauranteIdOrderByNomeAsc(Long restauranteId);
+
+	List<Categoria> findByRestauranteId(Long restauranteId);
 }

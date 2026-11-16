@@ -5,6 +5,7 @@ import java.util.List;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -37,5 +38,15 @@ public class PedidoController {
 	@PostMapping("/{id}/estorno")
 	public PedidoDTO.Response estornar(@PathVariable Long id, @Valid @RequestBody PedidoDTO.Estorno dto) {
 		return pedidoService.estornar(id, dto);
+	}
+
+	@PostMapping("/{id}/cancelamento")
+	public PedidoDTO.Response cancelar(@PathVariable Long id, @Valid @RequestBody PedidoDTO.Cancelamento dto) {
+		return pedidoService.cancelar(id, dto);
+	}
+
+	@PutMapping("/{id}")
+	public PedidoDTO.Response editar(@PathVariable Long id, @Valid @RequestBody PedidoDTO.Edicao dto) {
+		return pedidoService.editar(id, dto);
 	}
 }

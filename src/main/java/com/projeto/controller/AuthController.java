@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.projeto.dto.LoginRequest;
+import com.projeto.dto.SenhaDTO;
 import com.projeto.dto.UsuarioDTO;
 import com.projeto.service.AuthService;
 
@@ -36,6 +37,12 @@ public class AuthController {
 	@PostMapping("/logout")
 	public ResponseEntity<Void> logout() {
 		authService.sair();
+		return ResponseEntity.noContent().build();
+	}
+
+	@PostMapping("/senha")
+	public ResponseEntity<Void> trocarSenha(@Valid @RequestBody SenhaDTO.Troca dto) {
+		authService.trocarSenha(dto);
 		return ResponseEntity.noContent().build();
 	}
 }

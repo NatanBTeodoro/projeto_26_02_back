@@ -41,4 +41,8 @@ public class Produto {
 
 	@Column(nullable = false)
 	private boolean ativo = true;
+
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "restaurante_id")
+	private Restaurante restaurante;
 }

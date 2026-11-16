@@ -3,15 +3,22 @@ package com.projeto.service;
 import java.util.List;
 import java.util.Locale;
 
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.projeto.dto.SenhaDTO;
 import com.projeto.dto.UsuarioDTO;
+import com.projeto.entity.Restaurante;
 import com.projeto.entity.Usuario;
 import com.projeto.entity.enums.Perfil;
+import com.projeto.entity.enums.StatusRestaurante;
+import com.projeto.repository.ComandaRepository;
+import com.projeto.repository.PedidoRepository;
+import com.projeto.repository.RestauranteRepository;
 import com.projeto.repository.UsuarioRepository;
-import com.projeto.seguranca.SessaoAtual;
+import com.projeto.seguranca.EscopoOperacao;
 import com.projeto.util.exception.RecursoNaoEncontradoException;
 import com.projeto.util.exception.RegraDeNegocioException;
 
@@ -20,40 +27,78 @@ import com.projeto.util.exception.RegraDeNegocioException;
 public class UsuarioService {
 
 	private final UsuarioRepository usuarioRepository;
+	private final RestauranteRepository restauranteRepository;
+	private final PedidoRepository pedidoRepository;
+	private final ComandaRepository comandaRepository;
 	private final PasswordEncoder passwordEncoder;
-	private final SessaoAtual sessaoAtual;
+	private final EscopoOperacao escopo;
 
 	public UsuarioService(
 			UsuarioRepository usuarioRepository,
+			RestauranteRepository restauranteRepository,
+			PedidoRepository pedidoRepository,
+			ComandaRepository comandaRepository,
 			PasswordEncoder passwordEncoder,
-			SessaoAtual sessaoAtual) {
+			EscopoOperacao escopo) {
 		this.usuarioRepository = usuarioRepository;
+		this.restauranteRepository = restauranteRepository;
+		this.pedidoRepository = pedidoRepository;
+		this.comandaRepository = comandaRepository;
 		this.passwordEncoder = passwordEncoder;
-		this.sessaoAtual = sessaoAtual;
+		this.escopo = escopo;
 	}
 
-	public List<UsuarioDTO.Response> listar() {
-		return usuarioRepository.findAllByOrderByEmailAsc().stream().map(UsuarioDTO.Response::de).toList();
+	public List<UsuarioDTO.Response> listar(Long restauranteId) {
+		Usuario atual = escopo.usuario();
+		if (atual.getPerfil() == Perfil.GESTOR) {
+			if (atual.getRestaurante() == null) {
+				throw new RegraDeNegocioException("Usuário sem restaurante");
+			}
+			return mapear(usuarioRepository.findByRestauranteIdAndPerfilOrderByNomeAsc(
+					atual.getRestaurante().getId(), Perfil.USUARIO));
+		}
+		if (atual.getPerfil() != Perfil.ADMINISTRADOR) {
+			throw new AccessDeniedException("Acesso negado");
+		}
+		if (restauranteId != null) {
+			Restaurante restaurante = escopo.carregarDoAdmin(atual, restauranteId);
+			return mapear(usuarioRepository.findByRestauranteIdOrderByNomeAsc(restaurante.getId()));
+		}
+		if (escopo.restauranteInformado().isPresent()) {
+			Restaurante restaurante = escopo.restauranteDoContexto();
+			return mapear(usuarioRepository.findByRestauranteIdOrderByNomeAsc(restaurante.getId()));
+		}
+		return mapear(usuarioRepository.findDaEquipeDoAdmin(atual.getId()));
 	}
 
 	@Transactional
 	public UsuarioDTO.Response criar(UsuarioDTO.Create dto) {
+		Usuario atual = escopo.usuario();
 		String email = normalizar(dto.email());
 		if (usuarioRepository.existsByEmailIgnoreCase(email)) {
 			throw new RegraDeNegocioException("E-mail já cadastrado");
 		}
-		exigirPerfil(dto.perfil());
+		Restaurante restaurante = restauranteDoCadastro(atual, dto);
+		Perfil perfil = perfilDoCadastro(atual, dto.perfil());
+		if (restaurante.getStatus() != StatusRestaurante.ATIVO) {
+			throw new RegraDeNegocioException("Restaurante fechado ou inativo não pode ser alterado");
+		}
 		Usuario usuario = new Usuario();
+		usuario.setNome(dto.nome().trim());
 		usuario.setEmail(email);
 		usuario.setSenhaHash(passwordEncoder.encode(dto.senha()));
-		usuario.setPerfil(dto.perfil());
+		usuario.setPerfil(perfil);
+		usuario.setRestaurante(restaurante);
 		usuario.setAtivo(true);
 		return UsuarioDTO.Response.de(usuarioRepository.save(usuario));
 	}
 
 	@Transactional
 	public UsuarioDTO.Response atualizar(Long id, UsuarioDTO.Update dto) {
-		Usuario usuario = carregar(id);
+		Usuario usuario = carregarGerivel(id);
+		if (dto.nome() != null && !dto.nome().isBlank()) {
+			usuario.setNome(dto.nome().trim());
+		}
 		if (dto.email() != null && !dto.email().isBlank()) {
 			String email = normalizar(dto.email());
 			usuarioRepository.findByEmailIgnoreCase(email)
@@ -63,35 +108,131 @@ public class UsuarioService {
 					});
 			usuario.setEmail(email);
 		}
-		if (dto.senha() != null && !dto.senha().isBlank()) {
-			usuario.setSenhaHash(passwordEncoder.encode(dto.senha()));
-			usuario.setTokenAcesso(null);
-		}
-		if (dto.perfil() != null) {
-			exigirPerfil(dto.perfil());
-			usuario.setPerfil(dto.perfil());
-		}
 		if (dto.ativo() != null) {
-			if (!dto.ativo() && usuario.getId().equals(sessaoAtual.exigir().id())) {
+			if (!dto.ativo() && usuario.getId().equals(escopo.usuario().getId())) {
 				throw new RegraDeNegocioException("Não é possível inativar o próprio usuário");
 			}
-			usuario.setAtivo(dto.ativo());
-			if (!dto.ativo()) {
+			if (dto.ativo()) {
+				if (usuario.getRestaurante() == null
+						|| usuario.getRestaurante().getStatus() != StatusRestaurante.ATIVO) {
+					throw new RegraDeNegocioException("Restaurante fechado ou inativo não pode ser alterado");
+				}
+				usuario.setAtivo(true);
+				usuario.setInativadoPeloAdmin(false);
+				usuario.setInativadoPeloRestaurante(false);
+			} else {
+				usuario.setAtivo(false);
 				usuario.setTokenAcesso(null);
+				usuario.setInativadoPeloAdmin(false);
+				usuario.setInativadoPeloRestaurante(false);
 			}
 		}
 		return UsuarioDTO.Response.de(usuarioRepository.save(usuario));
 	}
 
-	private Usuario carregar(Long id) {
-		return usuarioRepository.findById(id)
-				.orElseThrow(() -> new RecursoNaoEncontradoException("Usuário não encontrado"));
+	@Transactional
+	public void deletar(Long id) {
+		Usuario usuario = carregarGerivel(id);
+		if (usuario.getId().equals(escopo.usuario().getId())) {
+			throw new RegraDeNegocioException("Não é possível deletar o próprio usuário");
+		}
+		pedidoRepository.desvincularUsuario(id);
+		comandaRepository.desvincularUsuario(id);
+		usuario.setTokenAcesso(null);
+		usuarioRepository.delete(usuario);
 	}
 
-	private void exigirPerfil(Perfil perfil) {
-		if (perfil != Perfil.ADMINISTRADOR && perfil != Perfil.GESTOR) {
+	@Transactional
+	public void redefinirSenha(Long id, SenhaDTO.Redefinicao dto) {
+		Usuario atual = escopo.usuario();
+		Usuario alvo = usuarioRepository.findById(id)
+				.orElseThrow(() -> new RecursoNaoEncontradoException("Usuário não encontrado"));
+		if (alvo.getId().equals(atual.getId())) {
+			throw new RegraDeNegocioException("Use a troca de senha do perfil, com a senha atual");
+		}
+		if (atual.getPerfil() == Perfil.ADMINISTRADOR) {
+			if (alvo.getPerfil() != Perfil.GESTOR && alvo.getPerfil() != Perfil.USUARIO) {
+				throw new AccessDeniedException("Acesso negado");
+			}
+			if (alvo.getRestaurante() == null || !alvo.getRestaurante().getAdmin().getId().equals(atual.getId())) {
+				throw new AccessDeniedException("Acesso negado");
+			}
+		} else if (atual.getPerfil() == Perfil.GESTOR) {
+			if (alvo.getPerfil() != Perfil.USUARIO) {
+				throw new RegraDeNegocioException("O gestor só redefine senha de usuário");
+			}
+			if (atual.getRestaurante() == null || alvo.getRestaurante() == null
+					|| !atual.getRestaurante().getId().equals(alvo.getRestaurante().getId())) {
+				throw new AccessDeniedException("Acesso negado");
+			}
+		} else {
+			throw new AccessDeniedException("Acesso negado");
+		}
+		alvo.setSenhaHash(passwordEncoder.encode(dto.senhaNova()));
+		alvo.setTokenAcesso(null);
+		usuarioRepository.save(alvo);
+	}
+
+	private Restaurante restauranteDoCadastro(Usuario atual, UsuarioDTO.Create dto) {
+		if (atual.getPerfil() == Perfil.GESTOR) {
+			if (atual.getRestaurante() == null) {
+				throw new RegraDeNegocioException("Usuário sem restaurante");
+			}
+			return atual.getRestaurante();
+		}
+		if (atual.getPerfil() == Perfil.ADMINISTRADOR) {
+			if (escopo.restauranteInformado().isPresent()) {
+				return escopo.restauranteDoContexto();
+			}
+			if (dto.restauranteId() == null) {
+				throw new RegraDeNegocioException("Informe o restaurante");
+			}
+			return restauranteRepository.findById(dto.restauranteId())
+					.filter(restaurante -> restaurante.getAdmin().getId().equals(atual.getId()))
+					.orElseThrow(() -> new RecursoNaoEncontradoException("Restaurante não encontrado"));
+		}
+		throw new AccessDeniedException("Acesso negado");
+	}
+
+	private Perfil perfilDoCadastro(Usuario atual, Perfil perfil) {
+		if (atual.getPerfil() == Perfil.GESTOR) {
+			if (perfil != Perfil.USUARIO) {
+				throw new RegraDeNegocioException("O gestor só cadastra usuário");
+			}
+			return Perfil.USUARIO;
+		}
+		if (perfil != Perfil.GESTOR && perfil != Perfil.USUARIO) {
 			throw new RegraDeNegocioException("Perfil inválido");
 		}
+		return perfil;
+	}
+
+	private Usuario carregarGerivel(Long id) {
+		Usuario atual = escopo.usuario();
+		Usuario usuario = usuarioRepository.findById(id)
+				.orElseThrow(() -> new RecursoNaoEncontradoException("Usuário não encontrado"));
+		if (atual.getPerfil() == Perfil.GESTOR) {
+			if (usuario.getPerfil() != Perfil.USUARIO
+					|| atual.getRestaurante() == null
+					|| usuario.getRestaurante() == null
+					|| !atual.getRestaurante().getId().equals(usuario.getRestaurante().getId())) {
+				throw new AccessDeniedException("Acesso negado");
+			}
+			return usuario;
+		}
+		if (atual.getPerfil() == Perfil.ADMINISTRADOR) {
+			if ((usuario.getPerfil() != Perfil.GESTOR && usuario.getPerfil() != Perfil.USUARIO)
+					|| usuario.getRestaurante() == null
+					|| !usuario.getRestaurante().getAdmin().getId().equals(atual.getId())) {
+				throw new AccessDeniedException("Acesso negado");
+			}
+			return usuario;
+		}
+		throw new AccessDeniedException("Acesso negado");
+	}
+
+	private List<UsuarioDTO.Response> mapear(List<Usuario> usuarios) {
+		return usuarios.stream().map(UsuarioDTO.Response::de).toList();
 	}
 
 	private String normalizar(String email) {

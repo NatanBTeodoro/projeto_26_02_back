@@ -16,9 +16,11 @@ import org.springframework.transaction.annotation.Transactional;
 import com.projeto.dto.DashboardDTO;
 import com.projeto.entity.Pedido;
 import com.projeto.entity.PedidoItem;
+import com.projeto.entity.Restaurante;
 import com.projeto.entity.enums.ClasseMenu;
 import com.projeto.entity.enums.StatusPedido;
 import com.projeto.repository.PedidoRepository;
+import com.projeto.seguranca.EscopoOperacao;
 import com.projeto.util.exception.RegraDeNegocioException;
 
 @Service
@@ -26,9 +28,11 @@ import com.projeto.util.exception.RegraDeNegocioException;
 public class DashboardService {
 
 	private final PedidoRepository pedidoRepository;
+	private final EscopoOperacao escopo;
 
-	public DashboardService(PedidoRepository pedidoRepository) {
+	public DashboardService(PedidoRepository pedidoRepository, EscopoOperacao escopo) {
 		this.pedidoRepository = pedidoRepository;
+		this.escopo = escopo;
 	}
 
 	public DashboardDTO.Response consultar(LocalDate de, LocalDate ate) {
@@ -38,9 +42,11 @@ public class DashboardService {
 		if (de.isAfter(ate)) {
 			throw new RegraDeNegocioException("A data inicial precisa ser anterior ou igual à final");
 		}
+		Restaurante restaurante = escopo.restauranteDoContexto();
 		Instant inicio = de.atStartOfDay(AnaliseService.FUSO).toInstant();
 		Instant fim = ate.plusDays(1).atStartOfDay(AnaliseService.FUSO).toInstant();
-		return montar(de, ate, pedidoRepository.findByDataHoraGreaterThanEqualAndDataHoraLessThan(inicio, fim));
+		return montar(de, ate, pedidoRepository.findByRestauranteIdAndDataHoraGreaterThanEqualAndDataHoraLessThan(
+				restaurante.getId(), inicio, fim));
 	}
 
 	static DashboardDTO.Response montar(LocalDate de, LocalDate ate, List<Pedido> pedidos) {
