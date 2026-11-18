@@ -37,6 +37,7 @@ public class PedidoService {
 	private final PedidoRepository pedidoRepository;
 	private final ProdutoRepository produtoRepository;
 	private final ComandaRepository comandaRepository;
+	private final ComandaService comandaService;
 	private final UsuarioRepository usuarioRepository;
 	private final EscopoOperacao escopo;
 
@@ -44,11 +45,13 @@ public class PedidoService {
 			PedidoRepository pedidoRepository,
 			ProdutoRepository produtoRepository,
 			ComandaRepository comandaRepository,
+			ComandaService comandaService,
 			UsuarioRepository usuarioRepository,
 			EscopoOperacao escopo) {
 		this.pedidoRepository = pedidoRepository;
 		this.produtoRepository = produtoRepository;
 		this.comandaRepository = comandaRepository;
+		this.comandaService = comandaService;
 		this.usuarioRepository = usuarioRepository;
 		this.escopo = escopo;
 	}
@@ -83,9 +86,11 @@ public class PedidoService {
 		pedido.setRestaurante(restaurante);
 		pedido.setUsuario(autorPedido);
 		pedido.setUsuarioNome(autorPedido.getNome());
+		pedido.setLancadoPor(RotuloAutor.noPedido(atual.getPerfil(), atual.getNome(), atual.getEmail()));
 		pedido.setComanda(comanda);
 		pedido.setMesa(dto.mesa());
 		pedido.setNomeCliente(dto.nomeCliente().trim());
+		comandaService.lembrarCliente(comanda, pedido.getMesa(), pedido.getNomeCliente());
 		preencherItens(pedido, agrupar(dto.itens()), Map.of(), restaurante);
 		return PedidoDTO.Response.de(pedidoRepository.save(pedido));
 	}
@@ -122,6 +127,9 @@ public class PedidoService {
 		preencherItens(pedido, quantidades, anteriores, pedido.getRestaurante());
 		pedido.setMesa(dto.mesa());
 		pedido.setNomeCliente(dto.nomeCliente().trim());
+		if (pedido.getComanda() != null) {
+			comandaService.lembrarCliente(pedido.getComanda(), pedido.getMesa(), pedido.getNomeCliente());
+		}
 		PedidoAlteracao alteracao = new PedidoAlteracao();
 		alteracao.setPedido(pedido);
 		alteracao.setDataHora(agora);
@@ -191,12 +199,7 @@ public class PedidoService {
 			throw new RegraDeNegocioException("Abra uma comanda antes de lançar o pedido");
 		}
 		if (comandaId == null) {
-			Comanda comanda = new Comanda();
-			comanda.setRestaurante(restaurante);
-			comanda.setUsuario(autorPedido);
-			comanda.setCriadaEm(Instant.now());
-			comanda.setAberta(true);
-			return comandaRepository.save(comanda);
+			return comandaService.nova(restaurante, autorPedido);
 		}
 		Comanda comanda = comandaRepository.findById(comandaId)
 				.orElseThrow(() -> new RecursoNaoEncontradoException("Comanda não encontrada"));

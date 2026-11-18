@@ -68,12 +68,26 @@ public class ComandaService {
 		} else {
 			throw new AccessDeniedException("Acesso negado");
 		}
+		Comanda comanda = nova(restaurante, dono);
+		return ComandaDTO.Response.de(comanda);
+	}
+
+	@Transactional
+	public Comanda nova(Restaurante restaurante, Usuario dono) {
 		Comanda comanda = new Comanda();
 		comanda.setRestaurante(restaurante);
 		comanda.setUsuario(dono);
 		comanda.setCriadaEm(Instant.now());
 		comanda.setAberta(true);
-		return ComandaDTO.Response.de(comandaRepository.save(comanda));
+		comanda.setNumero(comandaRepository.maiorNumero(restaurante.getId()) + 1);
+		return comandaRepository.save(comanda);
+	}
+
+	@Transactional
+	public void lembrarCliente(Comanda comanda, Integer mesa, String nomeCliente) {
+		comanda.setMesa(mesa);
+		comanda.setNomeCliente(nomeCliente);
+		comandaRepository.save(comanda);
 	}
 
 	private Usuario usuarioDoRestaurante(Restaurante restaurante, Long usuarioId) {

@@ -14,9 +14,12 @@ public final class ComandaDTO {
 
 	public record Response(
 			Long id,
+			Integer numero,
 			Long restauranteId,
 			Long usuarioId,
 			String usuarioNome,
+			Integer mesa,
+			String nomeCliente,
 			Instant criadaEm,
 			boolean aberta) {
 
@@ -25,9 +28,12 @@ public final class ComandaDTO {
 			String usuarioNome = comanda.getUsuario() == null ? null : comanda.getUsuario().getNome();
 			return new Response(
 					comanda.getId(),
+					comanda.getNumero(),
 					comanda.getRestaurante().getId(),
 					usuarioId,
 					usuarioNome,
+					comanda.getMesa(),
+					comanda.getNomeCliente(),
 					comanda.getCriadaEm(),
 					comanda.isAberta());
 		}

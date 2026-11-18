@@ -1,6 +1,9 @@
 package com.projeto.service;
 
+import java.text.Collator;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,8 +29,11 @@ public class CategoriaService {
 
 	public List<CategoriaDTO.Response> listar() {
 		Restaurante restaurante = escopo.restauranteDoContexto();
+		Collator ordem = Collator.getInstance(Locale.forLanguageTag("pt-BR"));
+		ordem.setStrength(Collator.PRIMARY);
 		return categoriaRepository.findByRestauranteIdOrderByNomeAsc(restaurante.getId()).stream()
 				.map(CategoriaDTO.Response::de)
+				.sorted(Comparator.comparing(CategoriaDTO.Response::nome, ordem))
 				.toList();
 	}
 

@@ -67,13 +67,33 @@ CREATE TABLE IF NOT EXISTS comanda (
     id BIGSERIAL PRIMARY KEY,
     restaurante_id BIGINT NOT NULL REFERENCES restaurante (id),
     usuario_id BIGINT REFERENCES usuario (id),
+    numero INTEGER,
+    mesa INTEGER,
+    nome_cliente VARCHAR(120),
     criada_em TIMESTAMPTZ NOT NULL,
     aberta BOOLEAN NOT NULL DEFAULT TRUE
 );
 
+ALTER TABLE comanda ADD COLUMN IF NOT EXISTS numero INTEGER;
+ALTER TABLE comanda ADD COLUMN IF NOT EXISTS mesa INTEGER;
+ALTER TABLE comanda ADD COLUMN IF NOT EXISTS nome_cliente VARCHAR(120);
+
+UPDATE comanda c
+SET numero = sub.n
+FROM (
+    SELECT id, ROW_NUMBER() OVER (PARTITION BY restaurante_id ORDER BY id) AS n
+    FROM comanda
+    WHERE numero IS NULL
+) sub
+WHERE c.id = sub.id AND c.numero IS NULL;
+
+ALTER TABLE comanda ALTER COLUMN numero SET NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS uk_comanda_restaurante_numero ON comanda (restaurante_id, numero);
+
 ALTER TABLE pedido ADD COLUMN IF NOT EXISTS restaurante_id BIGINT REFERENCES restaurante (id);
 ALTER TABLE pedido ADD COLUMN IF NOT EXISTS usuario_id BIGINT REFERENCES usuario (id);
 ALTER TABLE pedido ADD COLUMN IF NOT EXISTS usuario_nome VARCHAR(120);
+ALTER TABLE pedido ADD COLUMN IF NOT EXISTS lancado_por VARCHAR(120);
 ALTER TABLE pedido ADD COLUMN IF NOT EXISTS comanda_id BIGINT REFERENCES comanda (id);
 ALTER TABLE pedido ADD COLUMN IF NOT EXISTS mesa INTEGER;
 ALTER TABLE pedido ADD COLUMN IF NOT EXISTS nome_cliente VARCHAR(120);
@@ -82,6 +102,17 @@ ALTER TABLE pedido ADD COLUMN IF NOT EXISTS data_hora_estorno TIMESTAMPTZ;
 ALTER TABLE pedido ADD COLUMN IF NOT EXISTS data_hora_cancelamento TIMESTAMPTZ;
 ALTER TABLE pedido ADD COLUMN IF NOT EXISTS autor_estorno VARCHAR(120);
 ALTER TABLE pedido ADD COLUMN IF NOT EXISTS autor_cancelamento VARCHAR(120);
+
+UPDATE comanda c
+SET mesa = p.mesa,
+    nome_cliente = p.nome_cliente
+FROM (
+    SELECT DISTINCT ON (comanda_id) comanda_id, mesa, nome_cliente
+    FROM pedido
+    WHERE comanda_id IS NOT NULL
+    ORDER BY comanda_id, data_hora DESC
+) p
+WHERE c.id = p.comanda_id;
 
 CREATE TABLE IF NOT EXISTS pedido_alteracao (
     id BIGSERIAL PRIMARY KEY,

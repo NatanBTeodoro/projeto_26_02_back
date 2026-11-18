@@ -61,7 +61,7 @@ public class TiService {
 			throw new RegraDeNegocioException("E-mail já cadastrado");
 		}
 		Usuario admin = new Usuario();
-		admin.setNome(dto.nome().trim());
+		admin.setNome(nomeLivre(dto.nome().trim()));
 		admin.setEmail(email);
 		admin.setSenhaHash(passwordEncoder.encode(dto.senha()));
 		admin.setPerfil(Perfil.ADMINISTRADOR);
@@ -138,7 +138,7 @@ public class TiService {
 			throw new RegraDeNegocioException("E-mail já cadastrado");
 		}
 		Usuario usuario = new Usuario();
-		usuario.setNome(dto.nome().trim());
+		usuario.setNome(nomeLivre(dto.nome().trim()));
 		usuario.setEmail(email);
 		usuario.setSenhaHash(passwordEncoder.encode(dto.senha()));
 		usuario.setPerfil(Perfil.TI);
@@ -203,6 +203,10 @@ public class TiService {
 		if (escopo.usuario().getPerfil() != Perfil.TI) {
 			throw new AccessDeniedException("Acesso negado");
 		}
+	}
+
+	private String nomeLivre(String digitado) {
+		return NomeDuplicado.reservar(digitado, usuarioRepository.nomesSemRestaurante());
 	}
 
 	private String normalizar(String email) {

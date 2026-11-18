@@ -34,6 +34,14 @@ public class Comanda {
 	@JoinColumn(name = "usuario_id")
 	private Usuario usuario;
 
+	@Column(nullable = false)
+	private Integer numero;
+
+	private Integer mesa;
+
+	@Column(name = "nome_cliente", length = 120)
+	private String nomeCliente;
+
 	@Column(name = "criada_em", nullable = false)
 	private Instant criadaEm;
 

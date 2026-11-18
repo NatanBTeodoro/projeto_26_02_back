@@ -36,6 +36,12 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
 
 	List<Usuario> findByRestauranteIdAndPerfilOrderByNomeAsc(Long restauranteId, Perfil perfil);
 
+	@Query("select u.nome from Usuario u where u.restaurante.id = :restauranteId")
+	List<String> nomesDoRestaurante(@Param("restauranteId") Long restauranteId);
+
+	@Query("select u.nome from Usuario u where u.restaurante is null")
+	List<String> nomesSemRestaurante();
+
 	@Query("select u from Usuario u where u.restaurante.admin.id = :adminId order by u.nome asc")
 	List<Usuario> findDaEquipeDoAdmin(@Param("adminId") Long adminId);
 }

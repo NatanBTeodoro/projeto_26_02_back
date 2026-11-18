@@ -12,6 +12,7 @@ import com.projeto.entity.enums.Perfil;
 import com.projeto.entity.enums.StatusRestaurante;
 import com.projeto.repository.RestauranteRepository;
 import com.projeto.repository.UsuarioRepository;
+import com.projeto.service.RotuloAutor;
 import com.projeto.util.exception.RecursoNaoEncontradoException;
 import com.projeto.util.exception.RegraDeNegocioException;
 
@@ -108,11 +109,8 @@ public class EscopoOperacao {
 	public String autor() {
 		Usuario atual = usuario();
 		if (atual.getPerfil() == Perfil.ADMINISTRADOR && restauranteInformado().isPresent()) {
-			return "Admin";
+			return RotuloAutor.direto(atual.getPerfil(), atual.getNome(), atual.getEmail());
 		}
-		if (atual.getNome() != null && !atual.getNome().isBlank()) {
-			return atual.getNome();
-		}
-		return atual.getEmail();
+		return RotuloAutor.assinatura(atual.getPerfil(), atual.getNome(), atual.getEmail());
 	}
 }

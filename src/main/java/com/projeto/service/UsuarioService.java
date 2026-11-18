@@ -88,7 +88,7 @@ public class UsuarioService {
 			throw new RegraDeNegocioException("Restaurante fechado ou inativo não pode ser alterado");
 		}
 		Usuario usuario = new Usuario();
-		usuario.setNome(dto.nome().trim());
+		usuario.setNome(nomeLivre(dto.nome().trim(), restaurante.getId(), null));
 		usuario.setEmail(email);
 		usuario.setSenhaHash(passwordEncoder.encode(dto.senha()));
 		usuario.setPerfil(perfil);
@@ -112,7 +112,8 @@ public class UsuarioService {
 		}
 		Usuario usuario = carregarGerivel(id);
 		if (dto.nome() != null && !dto.nome().isBlank()) {
-			usuario.setNome(dto.nome().trim());
+			Long restauranteId = usuario.getRestaurante() == null ? null : usuario.getRestaurante().getId();
+			usuario.setNome(nomeLivre(dto.nome().trim(), restauranteId, usuario.getNome()));
 		}
 		if (dto.email() != null && !dto.email().isBlank()) {
 			String email = normalizar(dto.email());
@@ -253,6 +254,16 @@ public class UsuarioService {
 
 	private List<UsuarioDTO.Response> mapear(List<Usuario> usuarios) {
 		return usuarios.stream().map(UsuarioDTO.Response::de).toList();
+	}
+
+	private String nomeLivre(String digitado, Long restauranteId, String nomeAtual) {
+		java.util.List<String> nomes = restauranteId == null
+				? usuarioRepository.nomesSemRestaurante()
+				: usuarioRepository.nomesDoRestaurante(restauranteId);
+		if (nomeAtual != null) {
+			nomes = nomes.stream().filter(nome -> !nome.equalsIgnoreCase(nomeAtual)).toList();
+		}
+		return NomeDuplicado.reservar(digitado, nomes);
 	}
 
 	private String normalizar(String email) {

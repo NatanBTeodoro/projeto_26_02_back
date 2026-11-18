@@ -70,6 +70,9 @@ public class Pedido {
 	@Column(name = "usuario_nome", length = 120)
 	private String usuarioNome;
 
+	@Column(name = "lancado_por", length = 120)
+	private String lancadoPor;
+
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "comanda_id")
 	private Comanda comanda;

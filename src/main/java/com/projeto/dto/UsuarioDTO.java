@@ -3,6 +3,8 @@ package com.projeto.dto;
 import com.projeto.entity.Usuario;
 import com.projeto.entity.enums.Perfil;
 
+import com.projeto.util.SenhaValida;
+
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -16,7 +18,7 @@ public final class UsuarioDTO {
 	public record Create(
 			@NotBlank(message = "Informe o nome") @Size(max = 120) String nome,
 			@NotBlank(message = "Informe o e-mail") @Email(message = "Informe um e-mail válido") @Size(max = 255) String email,
-			@NotBlank(message = "Informe a senha") @Size(min = 6, max = 72, message = "A senha precisa ter entre 6 e 72 caracteres") String senha,
+			@NotBlank(message = "Informe a senha") @SenhaValida String senha,
 			@NotNull(message = "Informe o perfil") Perfil perfil,
 			Long restauranteId) {
 	}

@@ -90,10 +90,12 @@ public final class PedidoDTO {
 			Instant dataHoraCancelamento,
 			String autorCancelamento,
 			Long comandaId,
+			Integer comandaNumero,
 			Integer mesa,
 			String nomeCliente,
 			Long usuarioId,
 			String usuarioNome,
+			String lancadoPor,
 			Long restauranteId,
 			List<ItemResponse> itens,
 			List<AlteracaoResponse> alteracoes) {
@@ -104,6 +106,7 @@ public final class PedidoDTO {
 					: pedido.getUsuarioNome();
 			Long usuarioId = pedido.getUsuario() == null ? null : pedido.getUsuario().getId();
 			Long comandaId = pedido.getComanda() == null ? null : pedido.getComanda().getId();
+			Integer comandaNumero = pedido.getComanda() == null ? null : pedido.getComanda().getNumero();
 			Long restauranteId = pedido.getRestaurante() == null ? null : pedido.getRestaurante().getId();
 			List<AlteracaoResponse> historico = pedido.getAlteracoes() == null
 					? List.of()
@@ -119,10 +122,12 @@ public final class PedidoDTO {
 					pedido.getDataHoraCancelamento(),
 					pedido.getAutorCancelamento(),
 					comandaId,
+					comandaNumero,
 					pedido.getMesa(),
 					pedido.getNomeCliente(),
 					usuarioId,
 					nome,
+					pedido.getLancadoPor(),
 					restauranteId,
 					pedido.getItens().stream().map(ItemResponse::de).toList(),
 					historico);
