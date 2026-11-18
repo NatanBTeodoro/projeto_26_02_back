@@ -3,6 +3,7 @@ package com.projeto.service;
 import java.util.List;
 import java.util.Locale;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -28,18 +29,21 @@ public class TiService {
 	private final RestauranteService restauranteService;
 	private final PasswordEncoder passwordEncoder;
 	private final EscopoOperacao escopo;
+	private final String emailPrincipal;
 
 	public TiService(
 			UsuarioRepository usuarioRepository,
 			RestauranteRepository restauranteRepository,
 			RestauranteService restauranteService,
 			PasswordEncoder passwordEncoder,
-			EscopoOperacao escopo) {
+			EscopoOperacao escopo,
+			@Value("${app.semente.email}") String emailPrincipal) {
 		this.usuarioRepository = usuarioRepository;
 		this.restauranteRepository = restauranteRepository;
 		this.restauranteService = restauranteService;
 		this.passwordEncoder = passwordEncoder;
 		this.escopo = escopo;
+		this.emailPrincipal = emailPrincipal;
 	}
 
 	public List<TiDTO.Admin> listar() {
@@ -119,13 +123,62 @@ public class TiService {
 		return resposta(usuarioRepository.save(admin));
 	}
 
+	public List<TiDTO.UsuarioTi> listarUsuarios() {
+		exigirTi();
+		return usuarioRepository.findByPerfilOrderByNomeAsc(Perfil.TI).stream()
+				.map(this::respostaUsuario)
+				.toList();
+	}
+
+	@Transactional
+	public TiDTO.UsuarioTi criarUsuario(TiDTO.Create dto) {
+		exigirTi();
+		String email = normalizar(dto.email());
+		if (usuarioRepository.existsByEmailIgnoreCase(email)) {
+			throw new RegraDeNegocioException("E-mail já cadastrado");
+		}
+		Usuario usuario = new Usuario();
+		usuario.setNome(dto.nome().trim());
+		usuario.setEmail(email);
+		usuario.setSenhaHash(passwordEncoder.encode(dto.senha()));
+		usuario.setPerfil(Perfil.TI);
+		usuario.setAtivo(true);
+		return respostaUsuario(usuarioRepository.save(usuario));
+	}
+
+	@Transactional
+	public void removerUsuario(Long id) {
+		exigirTi();
+		Usuario usuario = usuarioRepository.findById(id)
+				.orElseThrow(() -> new RecursoNaoEncontradoException("Usuário não encontrado"));
+		ContaPrincipal.exigirPodeRemover(usuario.getEmail(), emailPrincipal);
+		if (usuario.getId().equals(escopo.usuario().getId())) {
+			throw new RegraDeNegocioException("Não é possível remover o próprio usuário");
+		}
+		if (usuario.getPerfil() != Perfil.TI) {
+			throw new RegraDeNegocioException("Conta não é de TI");
+		}
+		usuario.setTokenAcesso(null);
+		usuarioRepository.delete(usuario);
+	}
+
 	@Transactional
 	public void deletar(Long id) {
 		exigirTi();
 		Usuario admin = carregarAdmin(id);
+		ContaPrincipal.exigirPodeRemover(admin.getEmail(), emailPrincipal);
 		restauranteService.apagarDoAdmin(admin);
 		admin.setTokenAcesso(null);
 		usuarioRepository.delete(admin);
+	}
+
+	private TiDTO.UsuarioTi respostaUsuario(Usuario usuario) {
+		return new TiDTO.UsuarioTi(
+				usuario.getId(),
+				usuario.getNome(),
+				usuario.getEmail(),
+				usuario.isAtivo(),
+				ContaPrincipal.eh(usuario.getEmail(), emailPrincipal));
 	}
 
 	private TiDTO.Admin resposta(Usuario admin) {

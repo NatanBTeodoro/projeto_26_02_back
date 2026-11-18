@@ -95,6 +95,37 @@ CREATE TABLE IF NOT EXISTS pedido_alteracao (
 ALTER TABLE categoria ADD COLUMN IF NOT EXISTS restaurante_id BIGINT REFERENCES restaurante (id);
 ALTER TABLE produto ADD COLUMN IF NOT EXISTS restaurante_id BIGINT REFERENCES restaurante (id);
 
+CREATE TABLE IF NOT EXISTS reclamacao (
+    id BIGSERIAL PRIMARY KEY,
+    autor_id BIGINT REFERENCES usuario (id) ON DELETE SET NULL,
+    autor_nome VARCHAR(120) NOT NULL,
+    autor_email VARCHAR(255) NOT NULL,
+    criado_em TIMESTAMPTZ NOT NULL,
+    assunto VARCHAR(150) NOT NULL,
+    descricao VARCHAR(4000) NOT NULL,
+    status VARCHAR(20) NOT NULL,
+    resposta VARCHAR(4000),
+    respondido_em TIMESTAMPTZ,
+    anexo_nome VARCHAR(255),
+    destino VARCHAR(20) NOT NULL DEFAULT 'TI',
+    admin_destino_id BIGINT REFERENCES usuario (id) ON DELETE SET NULL,
+    restaurante_nome VARCHAR(150)
+);
+
+CREATE TABLE IF NOT EXISTS reclamacao_anexo (
+    reclamacao_id BIGINT PRIMARY KEY REFERENCES reclamacao (id) ON DELETE CASCADE,
+    tipo VARCHAR(120),
+    conteudo BYTEA NOT NULL
+);
+
+ALTER TABLE reclamacao ADD COLUMN IF NOT EXISTS destino VARCHAR(20) NOT NULL DEFAULT 'TI';
+ALTER TABLE reclamacao ADD COLUMN IF NOT EXISTS admin_destino_id BIGINT REFERENCES usuario (id) ON DELETE SET NULL;
+ALTER TABLE reclamacao ADD COLUMN IF NOT EXISTS restaurante_nome VARCHAR(150);
+
+CREATE INDEX IF NOT EXISTS idx_reclamacao_autor ON reclamacao (autor_id);
+CREATE INDEX IF NOT EXISTS idx_reclamacao_criado ON reclamacao (criado_em);
+CREATE INDEX IF NOT EXISTS idx_reclamacao_destino ON reclamacao (destino, admin_destino_id);
+
 CREATE INDEX IF NOT EXISTS idx_restaurante_admin ON restaurante (admin_id);
 CREATE INDEX IF NOT EXISTS idx_usuario_restaurante ON usuario (restaurante_id);
 CREATE INDEX IF NOT EXISTS idx_pedido_restaurante ON pedido (restaurante_id);

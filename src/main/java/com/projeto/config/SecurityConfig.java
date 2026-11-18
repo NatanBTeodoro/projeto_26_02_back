@@ -82,6 +82,8 @@ public class SecurityConfig {
 						.requestMatchers(HttpMethod.GET, "/actuator/health", "/actuator/health/**").permitAll()
 						.requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
 						.requestMatchers("/api/ti/**").hasRole("TI")
+						.requestMatchers(HttpMethod.PUT, "/api/reclamacoes/**").hasAnyRole("TI", "ADMINISTRADOR")
+						.requestMatchers("/api/reclamacoes/**").hasAnyRole("TI", "ADMINISTRADOR", "GESTOR")
 						.requestMatchers("/api/restaurantes/**").hasRole("ADMINISTRADOR")
 						.requestMatchers("/api/curva-abc/**").hasRole("ADMINISTRADOR")
 						.requestMatchers("/api/usuarios", "/api/usuarios/**").hasAnyRole("ADMINISTRADOR", "GESTOR")

@@ -24,7 +24,8 @@ public final class UsuarioDTO {
 	public record Update(
 			@Size(max = 120) String nome,
 			@Email(message = "Informe um e-mail válido") @Size(max = 255) String email,
-			Boolean ativo) {
+			Boolean ativo,
+			Perfil perfil) {
 	}
 
 	public record Sessao(

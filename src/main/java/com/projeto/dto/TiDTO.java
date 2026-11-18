@@ -24,4 +24,7 @@ public final class TiDTO {
 
 	public record Admin(Long id, String nome, String email, boolean ativo, List<RestauranteResumo> restaurantes) {
 	}
+
+	public record UsuarioTi(Long id, String nome, String email, boolean ativo, boolean principal) {
+	}
 }

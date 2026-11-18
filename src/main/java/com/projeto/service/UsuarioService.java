@@ -3,6 +3,7 @@ package com.projeto.service;
 import java.util.List;
 import java.util.Locale;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -32,6 +33,7 @@ public class UsuarioService {
 	private final ComandaRepository comandaRepository;
 	private final PasswordEncoder passwordEncoder;
 	private final EscopoOperacao escopo;
+	private final String emailPrincipal;
 
 	public UsuarioService(
 			UsuarioRepository usuarioRepository,
@@ -39,13 +41,15 @@ public class UsuarioService {
 			PedidoRepository pedidoRepository,
 			ComandaRepository comandaRepository,
 			PasswordEncoder passwordEncoder,
-			EscopoOperacao escopo) {
+			EscopoOperacao escopo,
+			@Value("${app.semente.email}") String emailPrincipal) {
 		this.usuarioRepository = usuarioRepository;
 		this.restauranteRepository = restauranteRepository;
 		this.pedidoRepository = pedidoRepository;
 		this.comandaRepository = comandaRepository;
 		this.passwordEncoder = passwordEncoder;
 		this.escopo = escopo;
+		this.emailPrincipal = emailPrincipal;
 	}
 
 	public List<UsuarioDTO.Response> listar(Long restauranteId) {
@@ -95,6 +99,17 @@ public class UsuarioService {
 
 	@Transactional
 	public UsuarioDTO.Response atualizar(Long id, UsuarioDTO.Update dto) {
+		Perfil perfilNovo = null;
+		if (dto.perfil() != null) {
+			Usuario candidato = usuarioRepository.findById(id)
+					.orElseThrow(() -> new RecursoNaoEncontradoException("Usuário não encontrado"));
+			if (candidato.getPerfil() != dto.perfil()) {
+				ContaPrincipal.exigirPodeRebaixar(candidato.getEmail(), emailPrincipal, dto.perfil());
+				Usuario atual = escopo.usuario();
+				TrocaPerfil.validar(atual.getPerfil(), atual.getId(), candidato.getId(), candidato.getPerfil(), dto.perfil());
+				perfilNovo = dto.perfil();
+			}
+		}
 		Usuario usuario = carregarGerivel(id);
 		if (dto.nome() != null && !dto.nome().isBlank()) {
 			usuario.setNome(dto.nome().trim());
@@ -127,11 +142,16 @@ public class UsuarioService {
 				usuario.setInativadoPeloRestaurante(false);
 			}
 		}
+		if (perfilNovo != null) {
+			usuario.setPerfil(perfilNovo);
+			usuario.setTokenAcesso(null);
+		}
 		return UsuarioDTO.Response.de(usuarioRepository.save(usuario));
 	}
 
 	@Transactional
 	public void deletar(Long id) {
+		usuarioRepository.findById(id).ifPresent(candidato -> ContaPrincipal.exigirPodeRemover(candidato.getEmail(), emailPrincipal));
 		Usuario usuario = carregarGerivel(id);
 		if (usuario.getId().equals(escopo.usuario().getId())) {
 			throw new RegraDeNegocioException("Não é possível deletar o próprio usuário");
