@@ -47,6 +47,10 @@ class DashboardServiceTest {
 		assertEquals(2, painel.topItens().size());
 		assertEquals("Pizza", painel.topItens().get(0).nome());
 		assertEquals(3, painel.topItens().get(0).quantidade());
+		assertEquals(new BigDecimal("20.00"), painel.topItens().get(0).valorUnitario());
+		assertEquals(new BigDecimal("60.00"), painel.topItens().get(0).valorTotal());
+		assertEquals(new BigDecimal("8.00"), painel.topItens().get(1).valorUnitario());
+		assertEquals(new BigDecimal("8.00"), painel.topItens().get(1).valorTotal());
 		assertEquals(1, painel.itensPorClasse().get(ClasseMenu.ESTRELA));
 		assertEquals(1, painel.itensPorClasse().get(ClasseMenu.CAO));
 		assertEquals(0, painel.itensPorClasse().get(ClasseMenu.ENIGMA));

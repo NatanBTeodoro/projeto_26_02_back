@@ -1,7 +1,6 @@
 package com.projeto.service;
 
 import java.io.IOException;
-import java.nio.file.Paths;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -82,7 +81,7 @@ public class ReclamacaoService {
 	}
 
 	@Transactional
-	public ReclamacaoDTO.Item criar(String assunto, String descricao, MultipartFile arquivo) {
+	public ReclamacaoDTO.Item criar(String assunto, String descricao, List<MultipartFile> arquivos) {
 		Usuario atual = escopo.usuario();
 		if (atual.getPerfil() != Perfil.ADMINISTRADOR && atual.getPerfil() != Perfil.GESTOR) {
 			throw new AccessDeniedException("Acesso negado");
@@ -114,7 +113,7 @@ public class ReclamacaoService {
 			reclamacao.setDestino(DestinoReclamacao.TI);
 		}
 		Reclamacao salva = reclamacaoRepository.save(reclamacao);
-		guardarAnexo(salva, arquivo);
+		guardarAnexo(salva, unico(arquivos));
 		return ReclamacaoDTO.Item.de(salva);
 	}
 
@@ -144,27 +143,29 @@ public class ReclamacaoService {
 		}
 		ReclamacaoAnexo anexo = anexoRepository.findById(id)
 				.orElseThrow(() -> new RecursoNaoEncontradoException("Anexo não encontrado"));
-		return new ReclamacaoDTO.Anexo(reclamacao.getAnexoNome(), anexo.getTipo(), anexo.getConteudo());
+		AnexoReclamacao.Arquivo seguro = AnexoReclamacao.paraDownload(reclamacao.getAnexoNome(), anexo.getConteudo());
+		return new ReclamacaoDTO.Anexo(seguro.nome(), seguro.tipo(), anexo.getConteudo());
+	}
+
+	private MultipartFile unico(List<MultipartFile> arquivos) {
+		if (arquivos == null || arquivos.isEmpty()) {
+			return null;
+		}
+		List<MultipartFile> preenchidos = arquivos.stream()
+				.filter(arquivo -> arquivo != null && !arquivo.isEmpty())
+				.toList();
+		if (preenchidos.size() > 1) {
+			throw new RegraDeNegocioException(AnexoReclamacao.MENSAGEM_QUANTIDADE);
+		}
+		return preenchidos.isEmpty() ? null : preenchidos.get(0);
 	}
 
 	private void guardarAnexo(Reclamacao reclamacao, MultipartFile arquivo) {
 		if (arquivo == null || arquivo.isEmpty()) {
 			return;
 		}
-		String nome = arquivo.getOriginalFilename();
-		if (nome == null || nome.isBlank()) {
-			nome = "anexo";
-		}
-		nome = Paths.get(nome).getFileName().toString().replace("\"", "");
-		if (nome.isBlank()) {
-			nome = "anexo";
-		}
-		if (nome.length() > 255) {
-			nome = nome.substring(nome.length() - 255);
-		}
-		String tipo = arquivo.getContentType();
-		if (tipo != null && tipo.length() > 120) {
-			tipo = tipo.substring(0, 120);
+		if (arquivo.getSize() > AnexoReclamacao.LIMITE_BYTES) {
+			throw new RegraDeNegocioException(AnexoReclamacao.MENSAGEM_TAMANHO);
 		}
 		byte[] conteudo;
 		try {
@@ -172,10 +173,11 @@ public class ReclamacaoService {
 		} catch (IOException ex) {
 			throw new RegraDeNegocioException("Não foi possível ler o anexo");
 		}
-		reclamacao.setAnexoNome(nome);
+		AnexoReclamacao.Arquivo seguro = AnexoReclamacao.validar(arquivo.getOriginalFilename(), conteudo);
+		reclamacao.setAnexoNome(seguro.nome());
 		ReclamacaoAnexo anexo = new ReclamacaoAnexo();
 		anexo.setReclamacao(reclamacao);
-		anexo.setTipo(tipo);
+		anexo.setTipo(seguro.tipo());
 		anexo.setConteudo(conteudo);
 		anexoRepository.save(anexo);
 	}

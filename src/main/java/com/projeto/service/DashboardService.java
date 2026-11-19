@@ -74,7 +74,7 @@ public class DashboardService {
 				porProduto.computeIfAbsent(
 						item.getProduto().getId(),
 						id -> new TopAcumulo(id, item.getProduto().getNome()))
-						.somar(item.getQuantidade());
+						.somar(item.getQuantidade(), item.getPrecoUnitario());
 			}
 			if (porDia.containsKey(dia)) {
 				porDia.put(dia, doDia.setScale(2, RoundingMode.HALF_UP));
@@ -88,7 +88,8 @@ public class DashboardService {
 				.sorted(Comparator.comparingLong(TopAcumulo::quantidade).reversed()
 						.thenComparing(TopAcumulo::nome, String.CASE_INSENSITIVE_ORDER))
 				.limit(5)
-				.map(item -> new DashboardDTO.TopItem(item.produtoId, item.nome, item.quantidade))
+				.map(item -> new DashboardDTO.TopItem(
+						item.produtoId, item.nome, item.quantidade, item.valorUnitario(), item.valorTotal()))
 				.toList();
 
 		Map<ClasseMenu, Integer> porClasse = new EnumMap<>(ClasseMenu.class);
@@ -106,14 +107,18 @@ public class DashboardService {
 		private final Long produtoId;
 		private final String nome;
 		private long quantidade;
+		private BigDecimal valor = BigDecimal.ZERO;
 
 		private TopAcumulo(Long produtoId, String nome) {
 			this.produtoId = produtoId;
 			this.nome = nome;
 		}
 
-		private void somar(int quantidade) {
+		private void somar(int quantidade, BigDecimal preco) {
 			this.quantidade += quantidade;
+			if (preco != null) {
+				valor = valor.add(preco.multiply(BigDecimal.valueOf(quantidade)));
+			}
 		}
 
 		private long quantidade() {
@@ -122,6 +127,17 @@ public class DashboardService {
 
 		private String nome() {
 			return nome;
+		}
+
+		private BigDecimal valorTotal() {
+			return valor.setScale(2, RoundingMode.HALF_UP);
+		}
+
+		private BigDecimal valorUnitario() {
+			if (quantidade == 0) {
+				return BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+			}
+			return valor.divide(BigDecimal.valueOf(quantidade), 2, RoundingMode.HALF_UP);
 		}
 	}
 }

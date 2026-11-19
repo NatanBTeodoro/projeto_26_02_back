@@ -49,8 +49,8 @@ public class ReclamacaoController {
 	public ReclamacaoDTO.Item criar(
 			@RequestParam String assunto,
 			@RequestParam String descricao,
-			@RequestParam(name = "arquivo", required = false) MultipartFile arquivo) {
-		return reclamacaoService.criar(assunto, descricao, arquivo);
+			@RequestParam(name = "arquivo", required = false) List<MultipartFile> arquivos) {
+		return reclamacaoService.criar(assunto, descricao, arquivos);
 	}
 
 	@PutMapping("/{id}")
@@ -74,6 +74,8 @@ public class ReclamacaoController {
 				.build();
 		return ResponseEntity.ok()
 				.header(HttpHeaders.CONTENT_DISPOSITION, disposicao.toString())
+				.header("X-Content-Type-Options", "nosniff")
+				.header("Content-Security-Policy", "default-src 'none'")
 				.contentType(tipo)
 				.body(anexo.conteudo());
 	}

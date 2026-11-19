@@ -11,6 +11,7 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
@@ -35,6 +36,11 @@ public class TratadorExcecoes {
 	@ExceptionHandler(RegraDeNegocioException.class)
 	public ResponseEntity<Map<String, String>> regra(RegraDeNegocioException ex) {
 		return resposta(HttpStatus.BAD_REQUEST, ex.getMessage());
+	}
+
+	@ExceptionHandler(MaxUploadSizeExceededException.class)
+	public ResponseEntity<Map<String, String>> arquivoGrande(MaxUploadSizeExceededException ex) {
+		return resposta(HttpStatus.BAD_REQUEST, "O arquivo passa de 5 MB");
 	}
 
 	@ExceptionHandler(MethodArgumentNotValidException.class)

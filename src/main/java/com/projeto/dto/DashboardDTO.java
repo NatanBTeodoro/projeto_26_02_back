@@ -15,7 +15,7 @@ public final class DashboardDTO {
 	public record PontoDia(LocalDate data, BigDecimal valor) {
 	}
 
-	public record TopItem(Long produtoId, String nome, long quantidade) {
+	public record TopItem(Long produtoId, String nome, long quantidade, BigDecimal valorUnitario, BigDecimal valorTotal) {
 	}
 
 	public record Response(
