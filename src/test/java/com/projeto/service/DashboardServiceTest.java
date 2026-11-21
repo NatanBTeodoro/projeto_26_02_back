@@ -27,9 +27,9 @@ class DashboardServiceTest {
 		Produto pizza = produto(1L, "Pizza");
 		Produto suco = produto(2L, "Suco");
 		List<Pedido> pedidos = List.of(
-				pedido(LocalDate.of(2026, 10, 1), 15, StatusPedido.ATIVO, pizza, 2, "20.00", "10.00"),
-				pedido(LocalDate.of(2026, 10, 1), 18, StatusPedido.ATIVO, suco, 1, "8.00", "3.00"),
-				pedido(LocalDate.of(2026, 10, 3), 12, StatusPedido.ATIVO, pizza, 1, "20.00", "10.00"),
+				pedido(LocalDate.of(2026, 10, 1), 15, StatusPedido.PAGO, pizza, 2, "20.00", "10.00"),
+				pedido(LocalDate.of(2026, 10, 1), 18, StatusPedido.PAGO, suco, 1, "8.00", "3.00"),
+				pedido(LocalDate.of(2026, 10, 3), 12, StatusPedido.PAGO, pizza, 1, "20.00", "10.00"),
 				pedido(LocalDate.of(2026, 10, 3), 13, StatusPedido.ESTORNADO, pizza, 9, "20.00", "10.00"));
 
 		DashboardDTO.Response painel = DashboardService.montar(

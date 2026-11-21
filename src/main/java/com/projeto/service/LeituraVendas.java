@@ -15,7 +15,7 @@ public final class LeituraVendas {
 	public static List<ClassificadorCardapio.Linha> linhasAtivas(List<Pedido> pedidos) {
 		List<ClassificadorCardapio.Linha> linhas = new ArrayList<>();
 		for (Pedido pedido : pedidos) {
-			if (pedido.getStatus() != StatusPedido.ATIVO) {
+			if (pedido.getStatus() != StatusPedido.PAGO) {
 				continue;
 			}
 			for (PedidoItem item : pedido.getItens()) {
@@ -35,6 +35,6 @@ public final class LeituraVendas {
 	}
 
 	public static long contarPedidosAtivos(List<Pedido> pedidos) {
-		return pedidos.stream().filter(pedido -> pedido.getStatus() == StatusPedido.ATIVO).count();
+		return pedidos.stream().filter(pedido -> pedido.getStatus() == StatusPedido.PAGO).count();
 	}
 }

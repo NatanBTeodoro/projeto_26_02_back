@@ -138,7 +138,7 @@ public class CurvaAbcService {
 			boolean criarProduto) {
 		long semCusto = 0;
 		for (Pedido pedido : pedidos) {
-			if (pedido.getStatus() != StatusPedido.ATIVO) {
+			if (pedido.getStatus() != StatusPedido.PAGO) {
 				continue;
 			}
 			for (PedidoItem item : pedido.getItens()) {

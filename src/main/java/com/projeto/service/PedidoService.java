@@ -97,7 +97,7 @@ public class PedidoService {
 
 	@Transactional
 	public PedidoDTO.Response estornar(Long id, PedidoDTO.Estorno dto) {
-		Pedido pedido = carregarMutavel(id);
+		Pedido pedido = carregarMutavel(id, true);
 		pedido.setStatus(StatusPedido.ESTORNADO);
 		pedido.setMotivoEstorno(dto.motivo().trim());
 		pedido.setDataHoraEstorno(Instant.now());
@@ -107,7 +107,7 @@ public class PedidoService {
 
 	@Transactional
 	public PedidoDTO.Response cancelar(Long id, PedidoDTO.Cancelamento dto) {
-		Pedido pedido = carregarMutavel(id);
+		Pedido pedido = carregarMutavel(id, false);
 		pedido.setStatus(StatusPedido.CANCELADO);
 		pedido.setMotivoCancelamento(dto.motivo().trim());
 		pedido.setDataHoraCancelamento(Instant.now());
@@ -117,7 +117,7 @@ public class PedidoService {
 
 	@Transactional
 	public PedidoDTO.Response editar(Long id, PedidoDTO.Edicao dto) {
-		Pedido pedido = carregarMutavel(id);
+		Pedido pedido = carregarMutavel(id, false);
 		Instant agora = Instant.now();
 		RegrasPedido.validarVenda(null, dto.mesa(), dto.nomeCliente(), dto.itens(), agora);
 		Map<Long, Integer> quantidades = agrupar(dto.itens());
@@ -209,13 +209,18 @@ public class PedidoService {
 		if (comanda.getUsuario() == null || !comanda.getUsuario().getId().equals(autorPedido.getId())) {
 			throw new RegraDeNegocioException("A comanda não pertence a este usuário");
 		}
+		if (!comanda.isAberta()) {
+			throw new RegraDeNegocioException("Comanda fechada");
+		}
 		return comanda;
 	}
 
-	private Pedido carregarMutavel(Long id) {
+	private Pedido carregarMutavel(Long id, boolean aceitaPago) {
 		Pedido pedido = pedidoRepository.findById(id)
 				.orElseThrow(() -> new RecursoNaoEncontradoException("Pedido não encontrado"));
-		if (pedido.getStatus() != StatusPedido.ATIVO) {
+		boolean aberto = pedido.getStatus() == StatusPedido.ATIVO;
+		boolean pago = aceitaPago && pedido.getStatus() == StatusPedido.PAGO;
+		if (!aberto && !pago) {
 			throw new RegraDeNegocioException("Pedido já encerrado");
 		}
 		Usuario atual = escopo.usuario();

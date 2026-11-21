@@ -9,10 +9,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.projeto.dto.ComandaDTO;
 import com.projeto.entity.Comanda;
+import com.projeto.entity.Pedido;
 import com.projeto.entity.Restaurante;
 import com.projeto.entity.Usuario;
 import com.projeto.entity.enums.Perfil;
 import com.projeto.repository.ComandaRepository;
+import com.projeto.repository.PedidoRepository;
 import com.projeto.repository.UsuarioRepository;
 import com.projeto.seguranca.EscopoOperacao;
 import com.projeto.util.exception.RecursoNaoEncontradoException;
@@ -23,14 +25,17 @@ import com.projeto.util.exception.RegraDeNegocioException;
 public class ComandaService {
 
 	private final ComandaRepository comandaRepository;
+	private final PedidoRepository pedidoRepository;
 	private final UsuarioRepository usuarioRepository;
 	private final EscopoOperacao escopo;
 
 	public ComandaService(
 			ComandaRepository comandaRepository,
+			PedidoRepository pedidoRepository,
 			UsuarioRepository usuarioRepository,
 			EscopoOperacao escopo) {
 		this.comandaRepository = comandaRepository;
+		this.pedidoRepository = pedidoRepository;
 		this.usuarioRepository = usuarioRepository;
 		this.escopo = escopo;
 	}
@@ -81,6 +86,27 @@ public class ComandaService {
 		comanda.setAberta(true);
 		comanda.setNumero(comandaRepository.maiorNumero(restaurante.getId()) + 1);
 		return comandaRepository.save(comanda);
+	}
+
+	@Transactional
+	public ComandaDTO.Response fechar(Long id) {
+		Usuario atual = escopo.usuario();
+		if (atual.getPerfil() != Perfil.GESTOR && atual.getPerfil() != Perfil.ADMINISTRADOR) {
+			throw new AccessDeniedException("Acesso negado");
+		}
+		Restaurante restaurante = escopo.exigirOperavel();
+		Comanda comanda = comandaRepository.findById(id)
+				.orElseThrow(() -> new RecursoNaoEncontradoException("Comanda não encontrada"));
+		if (comanda.getRestaurante() == null || !comanda.getRestaurante().getId().equals(restaurante.getId())) {
+			throw new AccessDeniedException("Acesso negado");
+		}
+		if (!comanda.isAberta()) {
+			throw new RegraDeNegocioException("Comanda já fechada");
+		}
+		List<Pedido> pedidos = pedidoRepository.findByComandaId(comanda.getId());
+		FechamentoComanda.aplicar(comanda, pedidos);
+		pedidoRepository.saveAll(pedidos);
+		return ComandaDTO.Response.de(comandaRepository.save(comanda));
 	}
 
 	@Transactional

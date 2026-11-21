@@ -17,12 +17,13 @@ class LeituraVendasTest {
 
 	@Test
 	void pedidoEstornadoNaoEntraNaQuantidadeNemNaReceita() {
-		Pedido ativo = pedido(StatusPedido.ATIVO, 2, "10.00");
+		Pedido pago = pedido(StatusPedido.PAGO, 2, "10.00");
+		Pedido aberto = pedido(StatusPedido.ATIVO, 4, "15.00");
 		Pedido estornado = pedido(StatusPedido.ESTORNADO, 5, "30.00");
 
-		List<ClassificadorCardapio.Linha> linhas = LeituraVendas.linhasAtivas(List.of(ativo, estornado));
+		List<ClassificadorCardapio.Linha> linhas = LeituraVendas.linhasAtivas(List.of(pago, aberto, estornado));
 
-		assertEquals(1, LeituraVendas.contarPedidosAtivos(List.of(ativo, estornado)));
+		assertEquals(1, LeituraVendas.contarPedidosAtivos(List.of(pago, aberto, estornado)));
 		assertEquals(1, linhas.size());
 		assertEquals(2, linhas.get(0).quantidade());
 		assertEquals(new BigDecimal("20.00"), ClassificadorCardapio.receita(linhas));

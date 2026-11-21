@@ -23,6 +23,8 @@ public interface PedidoRepository extends JpaRepository<Pedido, Long> {
 
 	List<Pedido> findByRestauranteId(Long restauranteId);
 
+	List<Pedido> findByComandaId(Long comandaId);
+
 	List<Pedido> findByRestauranteIdAndDataHoraGreaterThanEqualAndDataHoraLessThan(
 			Long restauranteId, Instant inicio, Instant fim);
 
@@ -31,7 +33,7 @@ public interface PedidoRepository extends JpaRepository<Pedido, Long> {
 
 	@Query("""
 			select min(p.dataHora) from Pedido p
-			where p.restaurante.id in :ids and p.status = com.projeto.entity.enums.StatusPedido.ATIVO
+			where p.restaurante.id in :ids and p.status = com.projeto.entity.enums.StatusPedido.PAGO
 			""")
 	Instant primeiraVendaAtiva(@Param("ids") Collection<Long> ids);
 

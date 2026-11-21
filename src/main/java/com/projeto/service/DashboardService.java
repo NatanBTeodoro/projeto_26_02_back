@@ -63,7 +63,7 @@ public class DashboardService {
 		}
 		Map<Long, TopAcumulo> porProduto = new java.util.LinkedHashMap<>();
 		for (Pedido pedido : pedidos) {
-			if (pedido.getStatus() != StatusPedido.ATIVO || pedido.getDataHora() == null) {
+			if (pedido.getStatus() != StatusPedido.PAGO || pedido.getDataHora() == null) {
 				continue;
 			}
 			LocalDate dia = pedido.getDataHora().atZone(AnaliseService.FUSO).toLocalDate();

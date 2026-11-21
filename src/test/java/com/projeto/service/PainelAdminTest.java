@@ -33,8 +33,8 @@ class PainelAdminTest {
 		Produto comCusto = produto(1L, "Risoto");
 		Produto semCusto = produto(2L, "Suco");
 		List<Pedido> pedidos = List.of(
-				pedido(casa, DE, StatusPedido.ATIVO, comCusto, 1, "100.00", "40.00"),
-				pedido(casa, DE, StatusPedido.ATIVO, semCusto, 1, "50.00", null),
+				pedido(casa, DE, StatusPedido.PAGO, comCusto, 1, "100.00", "40.00"),
+				pedido(casa, DE, StatusPedido.PAGO, semCusto, 1, "50.00", null),
 				pedido(casa, DE, StatusPedido.CANCELADO, comCusto, 1, "80.00", "10.00"));
 
 		PainelAdminDTO.Response painel = PainelAdmin.montar(
@@ -62,7 +62,7 @@ class PainelAdminTest {
 		assertEquals("—", kpi(vazio, "faturamento").variacao().texto());
 
 		Produto prato = produto(1L, "Prato");
-		List<Pedido> atuais = List.of(pedido(casa, DE, StatusPedido.ATIVO, prato, 1, "20.00", "10.00"));
+		List<Pedido> atuais = List.of(pedido(casa, DE, StatusPedido.PAGO, prato, 1, "20.00", "10.00"));
 		PainelAdminDTO.Response novo = PainelAdmin.montar(
 				List.of(casa), atuais, List.of(), atuais, List.of(),
 				false, DE, ATE, LocalDate.of(2026, 9, 23), LocalDate.of(2026, 10, 22));
@@ -142,7 +142,7 @@ class PainelAdminTest {
 			String custo) {
 		List<Pedido> lista = new ArrayList<>();
 		for (int i = 0; i < quantidade; i++) {
-			lista.add(pedido(restaurante, inicio.plusDays(i), StatusPedido.ATIVO, produto, 1, preco, custo));
+			lista.add(pedido(restaurante, inicio.plusDays(i), StatusPedido.PAGO, produto, 1, preco, custo));
 		}
 		return lista;
 	}

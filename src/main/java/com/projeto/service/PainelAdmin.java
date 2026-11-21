@@ -366,7 +366,7 @@ public final class PainelAdmin {
 			return totais;
 		}
 		for (Pedido pedido : pedidos) {
-			if (pedido.getStatus() != StatusPedido.ATIVO || pedido.getRestaurante() == null) {
+			if (pedido.getStatus() != StatusPedido.PAGO || pedido.getRestaurante() == null) {
 				continue;
 			}
 			Bloco bloco = blocos.get(pedido.getRestaurante().getId());
@@ -414,7 +414,7 @@ public final class PainelAdmin {
 			return ids;
 		}
 		for (Pedido pedido : pedidos) {
-			if (pedido.getStatus() == StatusPedido.ATIVO
+			if (pedido.getStatus() == StatusPedido.PAGO
 					&& pedido.getRestaurante() != null
 					&& conhecidos.contains(pedido.getRestaurante().getId())) {
 				ids.add(pedido.getRestaurante().getId());
