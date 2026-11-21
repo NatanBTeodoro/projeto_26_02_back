@@ -18,7 +18,8 @@ public final class AnaliseDTO {
 			BigDecimal popularidade,
 			BigDecimal margem,
 			ClasseMenu classe,
-			String recomendacao) {
+			String recomendacao,
+			BigDecimal margemPercentual) {
 	}
 
 	public record Response(

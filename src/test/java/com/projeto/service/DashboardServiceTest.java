@@ -40,6 +40,8 @@ class DashboardServiceTest {
 		assertEquals(new BigDecimal("68.00"), painel.faturamento());
 		assertEquals(3, painel.totalPedidos());
 		assertEquals(new BigDecimal("22.67"), painel.ticketMedio());
+		assertEquals(new BigDecimal("35.00"), painel.lucroBruto());
+		assertEquals(new BigDecimal("51.47"), painel.margemMedia());
 		assertEquals(3, painel.faturamentoPorDia().size());
 		assertEquals(new BigDecimal("48.00"), painel.faturamentoPorDia().get(0).valor());
 		assertEquals(new BigDecimal("0.00"), painel.faturamentoPorDia().get(1).valor());
@@ -66,6 +68,8 @@ class DashboardServiceTest {
 		assertEquals(new BigDecimal("0.00"), painel.faturamento());
 		assertEquals(0, painel.totalPedidos());
 		assertEquals(new BigDecimal("0.00"), painel.ticketMedio());
+		assertEquals(new BigDecimal("0.00"), painel.lucroBruto());
+		assertEquals(null, painel.margemMedia());
 		assertEquals(1, painel.faturamentoPorDia().size());
 		assertEquals(new BigDecimal("0.00"), painel.faturamentoPorDia().get(0).valor());
 		assertEquals(0, painel.topItens().size());

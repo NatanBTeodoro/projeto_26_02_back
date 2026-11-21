@@ -65,7 +65,8 @@ public class AnaliseService {
 						item.popularidade(),
 						item.margem(),
 						item.classe(),
-						item.recomendacao()))
+						item.recomendacao(),
+						item.margemPercentual()))
 				.toList();
 		return new AnaliseDTO.Response(
 				quantidadePedidos,

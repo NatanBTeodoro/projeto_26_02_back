@@ -4,7 +4,9 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -68,7 +70,7 @@ public class CurvaAbcService {
 			porRestaurante.put(restaurante.getId(), new Acumulo(String.valueOf(restaurante.getId()), restaurante.getNome()));
 		}
 		long linhasSemCusto = acumular(pedidos, porRestaurante, item -> item.getPedido().getRestaurante().getId());
-		return montar(porRestaurante, linhasSemCusto);
+		return montar(porRestaurante, linhasSemCusto, Map.of());
 	}
 
 	public CurvaAbcDTO.Response porProduto(LocalDate de, LocalDate ate, Long restauranteId) {
@@ -82,10 +84,75 @@ public class CurvaAbcService {
 				restaurante.getId(), periodo.inicio(), periodo.fim());
 		Map<Long, Acumulo> porProduto = new LinkedHashMap<>();
 		long linhasSemCusto = acumular(pedidos, porProduto, item -> item.getProduto().getId(), true);
-		return montar(porProduto, linhasSemCusto);
+		return montar(porProduto, linhasSemCusto, detalhesProduto(restaurante.getId(), de, ate, periodo, pedidos, porProduto));
 	}
 
-	private CurvaAbcDTO.Response montar(Map<Long, Acumulo> grupos, long linhasSemCusto) {
+	private Map<String, Detalhe> detalhesProduto(
+			Long restauranteId,
+			LocalDate de,
+			LocalDate ate,
+			Periodo periodo,
+			List<Pedido> pedidos,
+			Map<Long, Acumulo> porProduto) {
+		long dias = ChronoUnit.DAYS.between(de, ate) + 1;
+		LocalDate fimAnterior = de.minusDays(1);
+		LocalDate inicioAnterior = fimAnterior.minusDays(dias - 1);
+		Instant primeira = pedidoRepository.primeiraVendaAtiva(List.of(restauranteId));
+		boolean semPeriodoAnterior = primeira == null || !primeira.isBefore(periodo.inicio());
+		Map<Long, BigDecimal> lucroAntes = new HashMap<>();
+		if (!semPeriodoAnterior) {
+			List<Pedido> anteriores = pedidoRepository.findByRestauranteIdAndDataHoraGreaterThanEqualAndDataHoraLessThan(
+					restauranteId,
+					inicioAnterior.atStartOfDay(AnaliseService.FUSO).toInstant(),
+					periodo.inicio());
+			Map<Long, Acumulo> grupos = new LinkedHashMap<>();
+			acumular(anteriores, grupos, item -> item.getProduto().getId(), true);
+			for (Map.Entry<Long, Acumulo> entrada : grupos.entrySet()) {
+				lucroAntes.put(entrada.getKey(), entrada.getValue().lucro);
+			}
+		}
+		Map<Long, ClassificadorCardapio.Item> classes = new HashMap<>();
+		for (ClassificadorCardapio.Item item : ClassificadorCardapio.resultado(LeituraVendas.linhasAtivas(pedidos)).itens()) {
+			classes.put(item.produtoId(), item);
+		}
+		Map<String, Detalhe> detalhes = new HashMap<>();
+		for (Acumulo acumulo : porProduto.values()) {
+			Long id = Long.valueOf(acumulo.id);
+			ClassificadorCardapio.Item classe = classes.get(id);
+			VariacaoLucro variacao = variacao(semPeriodoAnterior, acumulo.lucro, lucroAntes.get(id));
+			detalhes.put(acumulo.id, new Detalhe(
+					acumulo.quantidade,
+					margem(acumulo.lucro, acumulo.faturamentoComCusto),
+					classe == null ? null : classe.classe().name(),
+					variacao.percentual(),
+					variacao.texto()));
+		}
+		return detalhes;
+	}
+
+	static VariacaoLucro variacao(boolean semPeriodoAnterior, BigDecimal atual, BigDecimal anterior) {
+		if (semPeriodoAnterior) {
+			return new VariacaoLucro(null, "Sem período anterior");
+		}
+		BigDecimal agora = atual == null ? BigDecimal.ZERO : atual;
+		BigDecimal base = anterior == null ? BigDecimal.ZERO : anterior;
+		if (base.signum() == 0) {
+			return agora.signum() > 0 ? new VariacaoLucro(null, "Novo") : new VariacaoLucro(null, null);
+		}
+		BigDecimal percentual = agora.subtract(base)
+				.multiply(new BigDecimal("100"))
+				.divide(base, 2, RoundingMode.HALF_UP);
+		return new VariacaoLucro(percentual, null);
+	}
+
+	private static BigDecimal margem(BigDecimal lucro, BigDecimal faturamentoComCusto) {
+		if (faturamentoComCusto == null || faturamentoComCusto.signum() == 0) {
+			return null;
+		}
+		return lucro.multiply(new BigDecimal("100")).divide(faturamentoComCusto, 2, RoundingMode.HALF_UP);
+	}
+
+	private CurvaAbcDTO.Response montar(Map<Long, Acumulo> grupos, long linhasSemCusto, Map<String, Detalhe> detalhes) {
 		List<CurvaAbc.Entrada> entradas = new ArrayList<>();
 		List<String> fora = new ArrayList<>();
 		for (Acumulo acumulo : grupos.values()) {
@@ -109,22 +176,38 @@ public class CurvaAbcService {
 		}
 		fora.sort(String.CASE_INSENSITIVE_ORDER);
 		CurvaAbc.Resultado resultado = CurvaAbc.calcular(entradas);
+		BigDecimal faturamento = BigDecimal.ZERO;
+		BigDecimal faturamentoComCusto = BigDecimal.ZERO;
+		for (Acumulo acumulo : grupos.values()) {
+			faturamento = faturamento.add(acumulo.faturamento);
+			faturamentoComCusto = faturamentoComCusto.add(acumulo.faturamentoComCusto);
+		}
 		List<CurvaAbcDTO.Item> itens = resultado.itens().stream()
-				.map(item -> new CurvaAbcDTO.Item(
-						item.id(),
-						item.nome(),
-						item.lucro(),
-						item.participacao(),
-						item.acumulado(),
-						item.faixa(),
-						item.dadoIncompleto()))
+				.map(item -> {
+					Detalhe detalhe = detalhes.getOrDefault(item.id(), Detalhe.VAZIO);
+					return new CurvaAbcDTO.Item(
+							item.id(),
+							item.nome(),
+							item.lucro(),
+							item.participacao(),
+							item.acumulado(),
+							item.faixa(),
+							item.dadoIncompleto(),
+							detalhe.quantidade(),
+							detalhe.margemPercentual(),
+							detalhe.classe(),
+							detalhe.variacaoLucro(),
+							detalhe.variacaoTexto());
+				})
 				.toList();
 		return new CurvaAbcDTO.Response(
 				CurvaAbc.CODIGO,
 				resultado.lucroBruto(),
 				linhasSemCusto,
 				fora,
-				itens);
+				itens,
+				faturamento.setScale(2, RoundingMode.HALF_UP),
+				margem(resultado.lucroBruto(), faturamentoComCusto));
 	}
 
 	private long acumular(List<Pedido> pedidos, Map<Long, Acumulo> grupos, java.util.function.Function<PedidoItem, Long> chave) {
@@ -151,6 +234,9 @@ public class CurvaAbcService {
 				if (acumulo == null) {
 					continue;
 				}
+				acumulo.quantidade += item.getQuantidade();
+				BigDecimal venda = item.getPrecoUnitario().multiply(BigDecimal.valueOf(item.getQuantidade()));
+				acumulo.faturamento = acumulo.faturamento.add(venda);
 				if (item.getCustoUnitario() == null) {
 					acumulo.teveSemCusto = true;
 					semCusto++;
@@ -160,6 +246,7 @@ public class CurvaAbcService {
 						.subtract(item.getCustoUnitario())
 						.multiply(BigDecimal.valueOf(item.getQuantidade()));
 				acumulo.lucro = acumulo.lucro.add(lucro);
+				acumulo.faturamentoComCusto = acumulo.faturamentoComCusto.add(venda);
 				acumulo.teveCusto = true;
 			}
 		}
@@ -189,10 +276,26 @@ public class CurvaAbcService {
 	private record Periodo(Instant inicio, Instant fim) {
 	}
 
+	record VariacaoLucro(BigDecimal percentual, String texto) {
+	}
+
+	private record Detalhe(
+			Long quantidade,
+			BigDecimal margemPercentual,
+			String classe,
+			BigDecimal variacaoLucro,
+			String variacaoTexto) {
+
+		private static final Detalhe VAZIO = new Detalhe(null, null, null, null, null);
+	}
+
 	private static final class Acumulo {
 		private final String id;
 		private final String nome;
 		private BigDecimal lucro = BigDecimal.ZERO;
+		private BigDecimal faturamento = BigDecimal.ZERO;
+		private BigDecimal faturamentoComCusto = BigDecimal.ZERO;
+		private long quantidade;
 		private boolean teveCusto;
 		private boolean teveSemCusto;
 

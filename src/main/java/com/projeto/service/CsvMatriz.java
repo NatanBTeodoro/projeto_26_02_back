@@ -13,13 +13,14 @@ public class CsvMatriz {
 
 	public byte[] gerar(AnaliseDTO.Response analise) {
 		StringBuilder texto = new StringBuilder();
-		texto.append("Produto;Categoria;Quantidade;Popularidade (%);Margem (R$);Classe;Sugestão\n");
+		texto.append("Produto;Categoria;Quantidade;Popularidade (%);Lucro unitário (R$);Margem (%);Classe;Sugestão\n");
 		for (AnaliseDTO.Item linha : analise.itens()) {
 			texto.append(campo(linha.nome())).append(';')
 					.append(campo(linha.categoria())).append(';')
 					.append(linha.quantidade()).append(';')
 					.append(decimal(linha.popularidade())).append(';')
 					.append(decimal(linha.margem())).append(';')
+					.append(decimal(linha.margemPercentual())).append(';')
 					.append(campo(linha.classe().getRotulo())).append(';')
 					.append(campo(linha.recomendacao())).append('\n');
 		}

@@ -35,7 +35,8 @@ public final class ClassificadorCardapio {
 			BigDecimal margem,
 			ClasseMenu classe,
 			String categoria,
-			String recomendacao) {
+			String recomendacao,
+			BigDecimal margemPercentual) {
 	}
 
 	public record Resultado(List<Item> itens, BigDecimal limitePopularidade, BigDecimal margemMedia) {
@@ -74,14 +75,14 @@ public final class ClassificadorCardapio {
 					.divide(BigDecimal.valueOf(total), ESCALA_CONTA, RoundingMode.HALF_UP);
 			BigDecimal popularidade = participacao.multiply(new BigDecimal("100")).setScale(4, RoundingMode.HALF_UP);
 			if (!acumulo.custoCompleto()) {
-				itens.add(acumulo.item(popularidade, null, ClasseMenu.DADO_INCOMPLETO));
+				itens.add(acumulo.item(popularidade, null, ClasseMenu.DADO_INCOMPLETO, null));
 				continue;
 			}
 			BigDecimal margem = acumulo.margem().setScale(2, RoundingMode.HALF_UP);
 			boolean popular = limite != null && participacao.compareTo(limite) >= 0;
 			boolean margemAlta = media != null && acumulo.margem().compareTo(media) > 0;
 			ClasseMenu classe = classe(popular, margemAlta);
-			itens.add(acumulo.item(popularidade, margem, classe));
+			itens.add(acumulo.item(popularidade, margem, classe, acumulo.margemPercentual()));
 		}
 		itens.sort(Comparator.comparing(Item::nome, String.CASE_INSENSITIVE_ORDER));
 		return new Resultado(List.copyOf(itens), limitePopularidade, margemMedia);
@@ -126,6 +127,7 @@ public final class ClassificadorCardapio {
 		private final String nome;
 		private final String categoria;
 		private long quantidade;
+		private BigDecimal somaPreco = BigDecimal.ZERO;
 		private BigDecimal somaMargem = BigDecimal.ZERO;
 		private boolean custoCompleto = true;
 
@@ -137,6 +139,9 @@ public final class ClassificadorCardapio {
 
 		private void somar(Linha linha) {
 			quantidade += linha.quantidade();
+			if (linha.preco() != null) {
+				somaPreco = somaPreco.add(linha.preco().multiply(BigDecimal.valueOf(linha.quantidade())));
+			}
 			if (linha.custo() == null) {
 				custoCompleto = false;
 				return;
@@ -153,7 +158,14 @@ public final class ClassificadorCardapio {
 			return somaMargem.divide(BigDecimal.valueOf(quantidade), ESCALA_CONTA, RoundingMode.HALF_UP);
 		}
 
-		private Item item(BigDecimal popularidade, BigDecimal margem, ClasseMenu classe) {
+		private BigDecimal margemPercentual() {
+			if (!custoCompleto || somaPreco.signum() == 0) {
+				return null;
+			}
+			return somaMargem.multiply(new BigDecimal("100")).divide(somaPreco, 2, RoundingMode.HALF_UP);
+		}
+
+		private Item item(BigDecimal popularidade, BigDecimal margem, ClasseMenu classe, BigDecimal margemPercentual) {
 			return new Item(
 					produtoId,
 					nome,
@@ -162,7 +174,8 @@ public final class ClassificadorCardapio {
 					margem,
 					classe,
 					categoria,
-					classe.getRecomendacao());
+					classe.getRecomendacao(),
+					margemPercentual);
 		}
 	}
 }

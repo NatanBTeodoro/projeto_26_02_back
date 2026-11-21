@@ -53,6 +53,20 @@ public class DashboardService {
 		List<ClassificadorCardapio.Linha> linhas = LeituraVendas.linhasAtivas(pedidos);
 		long totalPedidos = LeituraVendas.contarPedidosAtivos(pedidos);
 		BigDecimal faturamento = ClassificadorCardapio.receita(linhas);
+		BigDecimal lucro = BigDecimal.ZERO;
+		BigDecimal faturamentoComCusto = BigDecimal.ZERO;
+		for (ClassificadorCardapio.Linha linha : linhas) {
+			if (linha.custo() == null || linha.preco() == null) {
+				continue;
+			}
+			BigDecimal venda = linha.preco().multiply(BigDecimal.valueOf(linha.quantidade()));
+			faturamentoComCusto = faturamentoComCusto.add(venda);
+			lucro = lucro.add(linha.preco().subtract(linha.custo()).multiply(BigDecimal.valueOf(linha.quantidade())));
+		}
+		lucro = lucro.setScale(2, RoundingMode.HALF_UP);
+		BigDecimal margem = faturamentoComCusto.signum() == 0
+				? null
+				: lucro.multiply(new BigDecimal("100")).divide(faturamentoComCusto, 2, RoundingMode.HALF_UP);
 		BigDecimal ticket = totalPedidos == 0
 				? BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP)
 				: faturamento.divide(BigDecimal.valueOf(totalPedidos), 2, RoundingMode.HALF_UP);
@@ -100,7 +114,7 @@ public class DashboardService {
 			porClasse.merge(item.classe(), 1, Integer::sum);
 		}
 
-		return new DashboardDTO.Response(faturamento, totalPedidos, ticket, serie, top, porClasse);
+		return new DashboardDTO.Response(faturamento, totalPedidos, ticket, serie, top, porClasse, lucro, margem);
 	}
 
 	private static final class TopAcumulo {

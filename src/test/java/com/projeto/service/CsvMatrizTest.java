@@ -30,7 +30,8 @@ class CsvMatrizTest {
 						new BigDecimal("18.5000"),
 						new BigDecimal("22.40"),
 						ClasseMenu.ESTRELA,
-						ClasseMenu.ESTRELA.getRecomendacao())));
+						ClasseMenu.ESTRELA.getRecomendacao(),
+						new BigDecimal("50.00"))));
 
 		byte[] arquivo = new CsvMatriz().gerar(analise);
 		assertEquals((byte) 0xEF, arquivo[0]);
@@ -38,8 +39,8 @@ class CsvMatrizTest {
 		assertEquals((byte) 0xBF, arquivo[2]);
 
 		String texto = new String(arquivo, 3, arquivo.length - 3, StandardCharsets.UTF_8);
-		assertTrue(texto.startsWith("Produto;Categoria;Quantidade;Popularidade (%);Margem (R$);Classe;Sugestão\n"));
-		assertTrue(texto.contains("Pizza Calabresa;Pizzas;120;18,5000;22,40;Estrela;"));
+		assertTrue(texto.startsWith("Produto;Categoria;Quantidade;Popularidade (%);Lucro unitário (R$);Margem (%);Classe;Sugestão\n"));
+		assertTrue(texto.contains("Pizza Calabresa;Pizzas;120;18,5000;22,40;50,00;Estrela;"));
 	}
 
 	@Test
@@ -58,9 +59,10 @@ class CsvMatrizTest {
 						new BigDecimal("1.0000"),
 						null,
 						ClasseMenu.DADO_INCOMPLETO,
-						ClasseMenu.DADO_INCOMPLETO.getRecomendacao())));
+						ClasseMenu.DADO_INCOMPLETO.getRecomendacao(),
+						null)));
 
 		String texto = new String(new CsvMatriz().gerar(analise), StandardCharsets.UTF_8);
-		assertTrue(texto.contains("\"'=A;B \"\"x\"\"\";Bebidas;1;1,0000;;Dado incompleto;"));
+		assertTrue(texto.contains("\"'=A;B \"\"x\"\"\";Bebidas;1;1,0000;;;Dado incompleto;"));
 	}
 }

@@ -18,7 +18,12 @@ public final class CurvaAbcDTO {
 			BigDecimal participacao,
 			BigDecimal acumulado,
 			String faixa,
-			boolean dadoIncompleto) {
+			boolean dadoIncompleto,
+			Long quantidade,
+			BigDecimal margemPercentual,
+			String classe,
+			BigDecimal variacaoLucro,
+			String variacaoTexto) {
 	}
 
 	public record Response(
@@ -26,6 +31,8 @@ public final class CurvaAbcDTO {
 			BigDecimal lucroBruto,
 			long linhasSemCusto,
 			List<String> foraDaCurva,
-			List<Item> itens) {
+			List<Item> itens,
+			BigDecimal faturamento,
+			BigDecimal margemPercentual) {
 	}
 }
