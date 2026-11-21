@@ -29,6 +29,12 @@ public interface PedidoRepository extends JpaRepository<Pedido, Long> {
 	List<Pedido> findByRestauranteIdInAndDataHoraGreaterThanEqualAndDataHoraLessThan(
 			Collection<Long> restauranteIds, Instant inicio, Instant fim);
 
+	@Query("""
+			select min(p.dataHora) from Pedido p
+			where p.restaurante.id in :ids and p.status = com.projeto.entity.enums.StatusPedido.ATIVO
+			""")
+	Instant primeiraVendaAtiva(@Param("ids") Collection<Long> ids);
+
 	@Modifying(clearAutomatically = true, flushAutomatically = true)
 	@Query("update Pedido p set p.usuario = null where p.usuario.id = :usuarioId")
 	int desvincularUsuario(@Param("usuarioId") Long usuarioId);

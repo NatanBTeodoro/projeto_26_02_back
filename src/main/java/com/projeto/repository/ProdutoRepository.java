@@ -1,5 +1,6 @@
 package com.projeto.repository;
 
+import java.util.Collection;
 import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -13,4 +14,6 @@ public interface ProdutoRepository extends JpaRepository<Produto, Long> {
 	List<Produto> findByRestauranteIdOrderByNomeAsc(Long restauranteId);
 
 	List<Produto> findByRestauranteId(Long restauranteId);
+
+	List<Produto> findByRestauranteIdIn(Collection<Long> restauranteIds);
 }

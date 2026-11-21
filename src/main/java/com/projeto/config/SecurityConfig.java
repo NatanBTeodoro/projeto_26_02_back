@@ -86,6 +86,7 @@ public class SecurityConfig {
 						.requestMatchers("/api/reclamacoes/**").hasAnyRole("TI", "ADMINISTRADOR", "GESTOR")
 						.requestMatchers("/api/restaurantes/**").hasRole("ADMINISTRADOR")
 						.requestMatchers("/api/curva-abc/**").hasRole("ADMINISTRADOR")
+						.requestMatchers("/api/painel-admin/**").hasRole("ADMINISTRADOR")
 						.requestMatchers("/api/usuarios", "/api/usuarios/**").hasAnyRole("ADMINISTRADOR", "GESTOR")
 						.anyRequest().authenticated());
 
