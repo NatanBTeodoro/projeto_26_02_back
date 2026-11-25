@@ -44,6 +44,8 @@ class UsuarioServiceCriarFuncaoTest {
 	@Mock
 	private CargoRedeService cargoRede;
 	@Mock
+	private FuncaoAtribuicaoService funcoes;
+	@Mock
 	private Autorizacao autorizacao;
 
 	@Test
@@ -73,6 +75,7 @@ class UsuarioServiceCriarFuncaoTest {
 				escopo,
 				funcaoPadrao,
 				cargoRede,
+				funcoes,
 				autorizacao,
 				"admin@admin.com");
 

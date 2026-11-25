@@ -73,6 +73,7 @@ public class ImportacaoCardapioService {
 			produtos.putIfAbsent(chave(produto.getCategoria().getNome()) + "|" + chave(produto.getNome()), produto);
 		}
 
+		boolean podeCusto = autorizacao.tem(AuthorityFuncao.CUSTO_LER);
 		int gravados = 0;
 		List<Map<String, Object>> alteracoes = new ArrayList<>();
 		for (ImportacaoCardapioDTO.Linha linha : previa.linhas()) {
@@ -107,7 +108,11 @@ public class ImportacaoCardapioService {
 				custoAntes = produto.getCustoAtual();
 			}
 			produto.setPrecoAtual(linha.preco());
-			produto.setCustoAtual(linha.custo());
+			if (podeCusto) {
+				produto.setCustoAtual(linha.custo());
+			} else if (criou) {
+				produto.setCustoAtual(null);
+			}
 			Produto salvo = produtoRepository.save(produto);
 			Map<String, Object> mudanca = new LinkedHashMap<>();
 			mudanca.put("produtoId", salvo.getId());

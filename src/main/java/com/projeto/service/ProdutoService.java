@@ -55,7 +55,8 @@ public class ProdutoService {
 		autorizacao.exigir(AuthorityFuncao.CARDAPIO_ESCREVER);
 		escopo.exigirOperavel();
 		Produto produto = new Produto();
-		preencher(produto, dto.categoriaId(), dto.nome(), dto.precoAtual(), dto.custoAtual());
+		BigDecimal custo = autorizacao.tem(AuthorityFuncao.CUSTO_LER) ? dto.custoAtual() : null;
+		preencher(produto, dto.categoriaId(), dto.nome(), dto.precoAtual(), custo);
 		produto.setRestaurante(produto.getCategoria().getRestaurante());
 		produto.setAtivo(true);
 		Produto salvo = produtoRepository.save(produto);
@@ -70,7 +71,8 @@ public class ProdutoService {
 		Produto produto = carregar(id);
 		BigDecimal precoAntes = produto.getPrecoAtual();
 		BigDecimal custoAntes = produto.getCustoAtual();
-		preencher(produto, dto.categoriaId(), dto.nome(), dto.precoAtual(), dto.custoAtual());
+		BigDecimal custo = autorizacao.tem(AuthorityFuncao.CUSTO_LER) ? dto.custoAtual() : produto.getCustoAtual();
+		preencher(produto, dto.categoriaId(), dto.nome(), dto.precoAtual(), custo);
 		produto.setRestaurante(produto.getCategoria().getRestaurante());
 		if (dto.ativo() != null) {
 			produto.setAtivo(dto.ativo());

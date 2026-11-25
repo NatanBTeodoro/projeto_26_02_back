@@ -1,6 +1,9 @@
 package com.projeto.dto;
 
+import java.util.List;
+
 import com.projeto.entity.Usuario;
+import com.projeto.entity.enums.AuthorityFuncao;
 import com.projeto.entity.enums.Perfil;
 
 import com.projeto.util.SenhaValida;
@@ -20,7 +23,13 @@ public final class UsuarioDTO {
 			@NotBlank(message = "Informe o e-mail") @Email(message = "Informe um e-mail válido") @Size(max = 255) String email,
 			@NotBlank(message = "Informe a senha") @SenhaValida String senha,
 			@NotNull(message = "Informe o perfil") Perfil perfil,
-			Long restauranteId) {
+			Long restauranteId,
+			List<Long> cargos,
+			List<AuthorityFuncao> authorities) {
+
+		public Create(String nome, String email, String senha, Perfil perfil, Long restauranteId) {
+			this(nome, email, senha, perfil, restauranteId, null, null);
+		}
 	}
 
 	public record Update(

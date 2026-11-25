@@ -8,6 +8,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.projeto.dto.FuncaoDTO;
 import com.projeto.dto.SenhaDTO;
 import com.projeto.regra.ContaPrincipal;
 import com.projeto.regra.NomeDuplicado;
@@ -39,6 +40,7 @@ public class UsuarioService {
 	private final EscopoOperacao escopo;
 	private final FuncaoPadrao funcaoPadrao;
 	private final CargoRedeService cargoRede;
+	private final FuncaoAtribuicaoService funcoes;
 	private final Autorizacao autorizacao;
 	private final String emailPrincipal;
 
@@ -51,6 +53,7 @@ public class UsuarioService {
 			EscopoOperacao escopo,
 			FuncaoPadrao funcaoPadrao,
 			CargoRedeService cargoRede,
+			FuncaoAtribuicaoService funcoes,
 			Autorizacao autorizacao,
 			@Value("${app.semente.email}") String emailPrincipal) {
 		this.usuarioRepository = usuarioRepository;
@@ -61,6 +64,7 @@ public class UsuarioService {
 		this.escopo = escopo;
 		this.funcaoPadrao = funcaoPadrao;
 		this.cargoRede = cargoRede;
+		this.funcoes = funcoes;
 		this.autorizacao = autorizacao;
 		this.emailPrincipal = emailPrincipal;
 	}
@@ -107,8 +111,19 @@ public class UsuarioService {
 		usuario.setRestaurante(restaurante);
 		usuario.setAtivo(true);
 		Usuario salvo = usuarioRepository.save(usuario);
-		funcaoPadrao.aplicar(salvo);
-		cargoRede.vincularPacote(salvo);
+		if (dto.cargos() == null && dto.authorities() == null) {
+			funcaoPadrao.aplicar(salvo);
+			cargoRede.vincularPacote(salvo);
+		} else {
+			funcoes.aplicar(salvo.getId(), new FuncaoDTO.Atribuicao(
+					restaurante.getId(),
+					List.of(),
+					List.of(),
+					dto.cargos() == null ? List.of() : dto.cargos(),
+					dto.authorities() == null ? List.of() : dto.authorities(),
+					List.of(),
+					List.of()));
+		}
 		return UsuarioDTO.Response.de(salvo);
 	}
 
