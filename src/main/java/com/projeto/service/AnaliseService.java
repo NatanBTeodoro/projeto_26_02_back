@@ -3,13 +3,15 @@ package com.projeto.service;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.List;
 
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.projeto.analise.ClassificadorCardapio;
+import com.projeto.analise.LeituraVendas;
+import com.projeto.analise.PeriodoConsulta;
 import com.projeto.dto.AnaliseDTO;
 import com.projeto.entity.enums.AuthorityFuncao;
 import com.projeto.entity.Pedido;
@@ -20,8 +22,6 @@ import com.projeto.seguranca.EscopoOperacao;
 @Service
 @Transactional(readOnly = true)
 public class AnaliseService {
-
-	public static final ZoneId FUSO = ZoneId.of("America/Sao_Paulo");
 
 	private final PedidoRepository pedidoRepository;
 	private final EscopoOperacao escopo;

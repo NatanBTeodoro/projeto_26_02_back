@@ -19,6 +19,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.access.AccessDeniedException;
 
+import com.projeto.catalogo.CargosPadrao;
 import com.projeto.dto.FuncaoDTO;
 import com.projeto.entity.CargoRede;
 import com.projeto.entity.Restaurante;

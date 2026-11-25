@@ -14,7 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.projeto.entity.Usuario;
 import com.projeto.entity.enums.Perfil;
 import com.projeto.repository.UsuarioRepository;
-import com.projeto.service.NomeDuplicado;
+import com.projeto.regra.NomeDuplicado;
 
 @Component
 @Order(0)

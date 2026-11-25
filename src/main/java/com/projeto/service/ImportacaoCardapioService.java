@@ -12,6 +12,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.projeto.dto.ImportacaoCardapioDTO;
+import com.projeto.planilha.ImportacaoCardapio;
+import com.projeto.planilha.LeitorPlanilhaCardapio;
 import com.projeto.entity.Categoria;
 import com.projeto.entity.Produto;
 import com.projeto.entity.Restaurante;

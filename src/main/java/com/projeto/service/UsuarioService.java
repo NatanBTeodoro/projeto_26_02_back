@@ -9,6 +9,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.projeto.dto.SenhaDTO;
+import com.projeto.regra.ContaPrincipal;
+import com.projeto.regra.NomeDuplicado;
+import com.projeto.regra.TrocaPerfil;
 import com.projeto.dto.UsuarioDTO;
 import com.projeto.entity.Restaurante;
 import com.projeto.entity.Usuario;

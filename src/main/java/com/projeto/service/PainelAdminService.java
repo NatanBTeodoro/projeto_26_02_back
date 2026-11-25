@@ -7,6 +7,9 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.projeto.analise.LimitesPainelAdmin;
+import com.projeto.analise.PainelAdmin;
+import com.projeto.analise.PeriodoConsulta;
 import com.projeto.dto.PainelAdminDTO;
 import com.projeto.entity.Produto;
 import com.projeto.entity.Restaurante;
@@ -41,7 +44,7 @@ public class PainelAdminService {
 		Usuario admin = EscopoOperacao.administrador(escopo.usuario());
 		PeriodoConsulta.Intervalo periodo = PeriodoConsulta.exigir(de, ate);
 		PeriodoConsulta.Intervalo anterior = PeriodoConsulta.anterior(de, ate);
-		LocalDate hoje = LocalDate.now(AnaliseService.FUSO);
+		LocalDate hoje = LocalDate.now(PeriodoConsulta.FUSO);
 		Instant inicioRecente = PeriodoConsulta.inicio(hoje.minusDays(LimitesPainelAdmin.DIAS_SEM_VENDA - 1L));
 		Instant fimRecente = PeriodoConsulta.fimExclusivo(hoje);
 

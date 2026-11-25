@@ -13,6 +13,10 @@ import java.util.Map;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.projeto.analise.ClassificadorCardapio;
+import com.projeto.analise.CurvaAbc;
+import com.projeto.analise.LeituraVendas;
+import com.projeto.analise.PeriodoConsulta;
 import com.projeto.dto.CurvaAbcDTO;
 import com.projeto.entity.Pedido;
 import com.projeto.entity.PedidoItem;

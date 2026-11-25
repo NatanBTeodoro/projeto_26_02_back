@@ -11,6 +11,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.projeto.dto.ReclamacaoDTO;
+import com.projeto.regra.AnexoReclamacao;
+import com.projeto.regra.PeriodoReclamacao;
 import com.projeto.entity.Reclamacao;
 import com.projeto.entity.ReclamacaoAnexo;
 import com.projeto.entity.Restaurante;

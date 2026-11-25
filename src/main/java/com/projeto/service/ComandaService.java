@@ -11,6 +11,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.projeto.dto.ComandaDTO;
+import com.projeto.regra.EscopoVinculo;
+import com.projeto.regra.FechamentoComanda;
 import com.projeto.entity.Comanda;
 import com.projeto.entity.Pedido;
 import com.projeto.entity.Restaurante;

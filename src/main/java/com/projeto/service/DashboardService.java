@@ -12,6 +12,9 @@ import java.util.TreeMap;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.projeto.analise.ClassificadorCardapio;
+import com.projeto.analise.LeituraVendas;
+import com.projeto.analise.PeriodoConsulta;
 import com.projeto.dto.DashboardDTO;
 import com.projeto.entity.Pedido;
 import com.projeto.entity.PedidoItem;
@@ -87,7 +90,7 @@ public class DashboardService {
 			if (pedido.getStatus() != StatusPedido.PAGO || pedido.getDataHora() == null) {
 				continue;
 			}
-			LocalDate dia = pedido.getDataHora().atZone(AnaliseService.FUSO).toLocalDate();
+			LocalDate dia = pedido.getDataHora().atZone(PeriodoConsulta.FUSO).toLocalDate();
 			BigDecimal doDia = porDia.getOrDefault(dia, BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP));
 			for (PedidoItem item : pedido.getItens()) {
 				BigDecimal valor = item.getPrecoUnitario().multiply(BigDecimal.valueOf(item.getQuantidade()));

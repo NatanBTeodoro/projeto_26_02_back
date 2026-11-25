@@ -12,7 +12,7 @@ import com.projeto.entity.enums.Perfil;
 import com.projeto.entity.enums.StatusRestaurante;
 import com.projeto.repository.RestauranteRepository;
 import com.projeto.repository.UsuarioRepository;
-import com.projeto.service.RotuloAutor;
+import com.projeto.regra.RotuloAutor;
 import com.projeto.util.exception.RecursoNaoEncontradoException;
 import com.projeto.util.exception.RegraDeNegocioException;
 

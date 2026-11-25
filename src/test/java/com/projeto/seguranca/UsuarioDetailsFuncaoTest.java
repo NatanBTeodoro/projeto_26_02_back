@@ -9,7 +9,7 @@ import org.junit.jupiter.api.Test;
 import com.projeto.entity.Usuario;
 import com.projeto.entity.enums.AuthorityFuncao;
 import com.projeto.entity.enums.Perfil;
-import com.projeto.service.CatalogoFuncaoPadrao;
+import com.projeto.catalogo.CatalogoFuncaoPadrao;
 
 class UsuarioDetailsFuncaoTest {
 

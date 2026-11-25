@@ -5,6 +5,7 @@ import java.time.Instant;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.projeto.catalogo.CatalogoFuncaoPadrao;
 import com.projeto.entity.Usuario;
 import com.projeto.entity.UsuarioFuncaoGlobal;
 import com.projeto.entity.UsuarioRestauranteFuncao;

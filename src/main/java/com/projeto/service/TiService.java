@@ -9,6 +9,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.projeto.dto.TiDTO;
+import com.projeto.regra.ContaPrincipal;
+import com.projeto.regra.NomeDuplicado;
 import com.projeto.entity.Restaurante;
 import com.projeto.entity.Usuario;
 import com.projeto.entity.enums.Perfil;

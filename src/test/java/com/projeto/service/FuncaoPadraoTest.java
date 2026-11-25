@@ -14,6 +14,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import com.projeto.catalogo.CatalogoFuncaoPadrao;
 import com.projeto.entity.Restaurante;
 import com.projeto.entity.Usuario;
 import com.projeto.entity.UsuarioRestauranteFuncao;

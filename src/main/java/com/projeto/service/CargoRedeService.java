@@ -11,6 +11,8 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.projeto.catalogo.CargosPadrao;
+import com.projeto.catalogo.CatalogoFuncaoPadrao;
 import com.projeto.dto.FuncaoDTO;
 import com.projeto.entity.AuditoriaPermissao;
 import com.projeto.entity.CargoRede;
