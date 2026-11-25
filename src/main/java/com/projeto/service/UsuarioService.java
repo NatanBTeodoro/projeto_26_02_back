@@ -13,6 +13,7 @@ import com.projeto.dto.SenhaDTO;
 import com.projeto.dto.UsuarioDTO;
 import com.projeto.entity.Restaurante;
 import com.projeto.entity.Usuario;
+import com.projeto.entity.enums.AuthorityFuncao;
 import com.projeto.entity.enums.Perfil;
 import com.projeto.entity.enums.StatusRestaurante;
 import com.projeto.repository.ComandaRepository;
@@ -33,6 +34,8 @@ public class UsuarioService {
 	private final ComandaRepository comandaRepository;
 	private final PasswordEncoder passwordEncoder;
 	private final EscopoOperacao escopo;
+	private final FuncaoPadrao funcaoPadrao;
+	private final Autorizacao autorizacao;
 	private final String emailPrincipal;
 
 	public UsuarioService(
@@ -42,6 +45,8 @@ public class UsuarioService {
 			ComandaRepository comandaRepository,
 			PasswordEncoder passwordEncoder,
 			EscopoOperacao escopo,
+			FuncaoPadrao funcaoPadrao,
+			Autorizacao autorizacao,
 			@Value("${app.semente.email}") String emailPrincipal) {
 		this.usuarioRepository = usuarioRepository;
 		this.restauranteRepository = restauranteRepository;
@@ -49,11 +54,15 @@ public class UsuarioService {
 		this.comandaRepository = comandaRepository;
 		this.passwordEncoder = passwordEncoder;
 		this.escopo = escopo;
+		this.funcaoPadrao = funcaoPadrao;
+		this.autorizacao = autorizacao;
 		this.emailPrincipal = emailPrincipal;
 	}
 
 	public List<UsuarioDTO.Response> listar(Long restauranteId) {
+		autorizacao.exigir(AuthorityFuncao.EQUIPE_LER);
 		Usuario atual = escopo.usuario();
+		// vinculo, nao funcao
 		if (atual.getPerfil() == Perfil.GESTOR) {
 			if (atual.getRestaurante() == null) {
 				throw new RegraDeNegocioException("Usuário sem restaurante");
@@ -61,6 +70,7 @@ public class UsuarioService {
 			return mapear(usuarioRepository.findByRestauranteIdAndPerfilOrderByNomeAsc(
 					atual.getRestaurante().getId(), Perfil.USUARIO));
 		}
+		// vinculo, nao funcao
 		if (atual.getPerfil() != Perfil.ADMINISTRADOR) {
 			throw new AccessDeniedException("Acesso negado");
 		}
@@ -83,7 +93,7 @@ public class UsuarioService {
 			throw new RegraDeNegocioException("E-mail já cadastrado");
 		}
 		Restaurante restaurante = restauranteDoCadastro(atual, dto);
-		Perfil perfil = perfilDoCadastro(atual, dto.perfil());
+		Perfil perfil = perfilDoCadastro(dto.perfil());
 		if (restaurante.getStatus() != StatusRestaurante.ATIVO) {
 			throw new RegraDeNegocioException("Restaurante fechado ou inativo não pode ser alterado");
 		}
@@ -94,7 +104,9 @@ public class UsuarioService {
 		usuario.setPerfil(perfil);
 		usuario.setRestaurante(restaurante);
 		usuario.setAtivo(true);
-		return UsuarioDTO.Response.de(usuarioRepository.save(usuario));
+		Usuario salvo = usuarioRepository.save(usuario);
+		funcaoPadrao.aplicar(salvo);
+		return UsuarioDTO.Response.de(salvo);
 	}
 
 	@Transactional
@@ -106,6 +118,13 @@ public class UsuarioService {
 			if (candidato.getPerfil() != dto.perfil()) {
 				ContaPrincipal.exigirPodeRebaixar(candidato.getEmail(), emailPrincipal, dto.perfil());
 				Usuario atual = escopo.usuario();
+				autorizacao.exigir(AuthorityFuncao.EQUIPE_PERFIL_TROCAR);
+				if (dto.perfil() == Perfil.GESTOR) {
+					autorizacao.exigir(AuthorityFuncao.EQUIPE_GESTOR_GERIR);
+				}
+				if (dto.perfil() == Perfil.USUARIO) {
+					autorizacao.exigir(AuthorityFuncao.EQUIPE_USUARIO_GERIR);
+				}
 				TrocaPerfil.validar(atual.getPerfil(), atual.getId(), candidato.getId(), candidato.getPerfil(), dto.perfil());
 				perfilNovo = dto.perfil();
 			}
@@ -165,12 +184,14 @@ public class UsuarioService {
 
 	@Transactional
 	public void redefinirSenha(Long id, SenhaDTO.Redefinicao dto) {
+		autorizacao.exigir(AuthorityFuncao.EQUIPE_SENHA_REDEFINIR);
 		Usuario atual = escopo.usuario();
 		Usuario alvo = usuarioRepository.findById(id)
 				.orElseThrow(() -> new RecursoNaoEncontradoException("Usuário não encontrado"));
 		if (alvo.getId().equals(atual.getId())) {
 			throw new RegraDeNegocioException("Use a troca de senha do perfil, com a senha atual");
 		}
+		// vinculo, nao funcao
 		if (atual.getPerfil() == Perfil.ADMINISTRADOR) {
 			if (alvo.getPerfil() != Perfil.GESTOR && alvo.getPerfil() != Perfil.USUARIO) {
 				throw new AccessDeniedException("Acesso negado");
@@ -195,12 +216,14 @@ public class UsuarioService {
 	}
 
 	private Restaurante restauranteDoCadastro(Usuario atual, UsuarioDTO.Create dto) {
+		// vinculo, nao funcao
 		if (atual.getPerfil() == Perfil.GESTOR) {
 			if (atual.getRestaurante() == null) {
 				throw new RegraDeNegocioException("Usuário sem restaurante");
 			}
 			return atual.getRestaurante();
 		}
+		// vinculo, nao funcao
 		if (atual.getPerfil() == Perfil.ADMINISTRADOR) {
 			if (escopo.restauranteInformado().isPresent()) {
 				return escopo.restauranteDoContexto();
@@ -215,23 +238,30 @@ public class UsuarioService {
 		throw new AccessDeniedException("Acesso negado");
 	}
 
-	private Perfil perfilDoCadastro(Usuario atual, Perfil perfil) {
-		if (atual.getPerfil() == Perfil.GESTOR) {
-			if (perfil != Perfil.USUARIO) {
-				throw new RegraDeNegocioException("O gestor só cadastra usuário");
-			}
+	private Perfil perfilDoCadastro(Perfil perfil) {
+		if (perfil == Perfil.USUARIO) {
+			autorizacao.exigir(AuthorityFuncao.EQUIPE_USUARIO_GERIR);
 			return Perfil.USUARIO;
 		}
-		if (perfil != Perfil.GESTOR && perfil != Perfil.USUARIO) {
-			throw new RegraDeNegocioException("Perfil inválido");
+		if (perfil == Perfil.GESTOR) {
+			autorizacao.exigir(AuthorityFuncao.EQUIPE_GESTOR_GERIR);
+			return Perfil.GESTOR;
 		}
-		return perfil;
+		throw new RegraDeNegocioException("Perfil inválido");
 	}
 
 	private Usuario carregarGerivel(Long id) {
 		Usuario atual = escopo.usuario();
 		Usuario usuario = usuarioRepository.findById(id)
 				.orElseThrow(() -> new RecursoNaoEncontradoException("Usuário não encontrado"));
+		if (usuario.getPerfil() == Perfil.USUARIO) {
+			autorizacao.exigir(AuthorityFuncao.EQUIPE_USUARIO_GERIR);
+		} else if (usuario.getPerfil() == Perfil.GESTOR) {
+			autorizacao.exigir(AuthorityFuncao.EQUIPE_GESTOR_GERIR);
+		} else {
+			throw new AccessDeniedException("Acesso negado");
+		}
+		// vinculo, nao funcao
 		if (atual.getPerfil() == Perfil.GESTOR) {
 			if (usuario.getPerfil() != Perfil.USUARIO
 					|| atual.getRestaurante() == null

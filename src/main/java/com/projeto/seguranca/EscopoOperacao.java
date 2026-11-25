@@ -69,12 +69,14 @@ public class EscopoOperacao {
 	@Transactional(readOnly = true)
 	public Restaurante restauranteDoContexto() {
 		Usuario atual = usuario();
+		// vinculo, nao funcao
 		if (atual.getPerfil() == Perfil.GESTOR || atual.getPerfil() == Perfil.USUARIO) {
 			if (atual.getRestaurante() == null) {
 				throw new RegraDeNegocioException("Usuário sem restaurante");
 			}
 			return atual.getRestaurante();
 		}
+		// vinculo, nao funcao
 		if (atual.getPerfil() == Perfil.ADMINISTRADOR) {
 			Long id = restauranteInformado()
 					.orElseThrow(() -> new RegraDeNegocioException("Abra a visão de gestor do restaurante"));
@@ -94,6 +96,7 @@ public class EscopoOperacao {
 
 	@Transactional(readOnly = true)
 	public Restaurante carregarDoAdmin(Usuario admin, Long restauranteId) {
+		// vinculo, nao funcao
 		if (admin.getPerfil() != Perfil.ADMINISTRADOR) {
 			throw new AccessDeniedException("Acesso negado");
 		}
@@ -108,6 +111,7 @@ public class EscopoOperacao {
 	@Transactional(readOnly = true)
 	public String autor() {
 		Usuario atual = usuario();
+		// vinculo, nao funcao
 		if (atual.getPerfil() == Perfil.ADMINISTRADOR && restauranteInformado().isPresent()) {
 			return RotuloAutor.direto(atual.getPerfil(), atual.getNome(), atual.getEmail());
 		}

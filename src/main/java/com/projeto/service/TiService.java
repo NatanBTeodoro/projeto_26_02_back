@@ -29,6 +29,7 @@ public class TiService {
 	private final RestauranteService restauranteService;
 	private final PasswordEncoder passwordEncoder;
 	private final EscopoOperacao escopo;
+	private final FuncaoPadrao funcaoPadrao;
 	private final String emailPrincipal;
 
 	public TiService(
@@ -37,12 +38,14 @@ public class TiService {
 			RestauranteService restauranteService,
 			PasswordEncoder passwordEncoder,
 			EscopoOperacao escopo,
+			FuncaoPadrao funcaoPadrao,
 			@Value("${app.semente.email}") String emailPrincipal) {
 		this.usuarioRepository = usuarioRepository;
 		this.restauranteRepository = restauranteRepository;
 		this.restauranteService = restauranteService;
 		this.passwordEncoder = passwordEncoder;
 		this.escopo = escopo;
+		this.funcaoPadrao = funcaoPadrao;
 		this.emailPrincipal = emailPrincipal;
 	}
 
@@ -66,7 +69,9 @@ public class TiService {
 		admin.setSenhaHash(passwordEncoder.encode(dto.senha()));
 		admin.setPerfil(Perfil.ADMINISTRADOR);
 		admin.setAtivo(true);
-		return resposta(usuarioRepository.save(admin));
+		Usuario salvo = usuarioRepository.save(admin);
+		funcaoPadrao.aplicar(salvo);
+		return resposta(salvo);
 	}
 
 	@Transactional
@@ -143,7 +148,9 @@ public class TiService {
 		usuario.setSenhaHash(passwordEncoder.encode(dto.senha()));
 		usuario.setPerfil(Perfil.TI);
 		usuario.setAtivo(true);
-		return respostaUsuario(usuarioRepository.save(usuario));
+		Usuario salvo = usuarioRepository.save(usuario);
+		funcaoPadrao.aplicar(salvo);
+		return respostaUsuario(salvo);
 	}
 
 	@Transactional
@@ -200,6 +207,7 @@ public class TiService {
 	}
 
 	private void exigirTi() {
+		// vinculo, nao funcao
 		if (escopo.usuario().getPerfil() != Perfil.TI) {
 			throw new AccessDeniedException("Acesso negado");
 		}

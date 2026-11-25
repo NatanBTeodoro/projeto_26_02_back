@@ -7,10 +7,12 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
 
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.projeto.dto.AnaliseDTO;
+import com.projeto.entity.enums.AuthorityFuncao;
 import com.projeto.entity.Pedido;
 import com.projeto.entity.Restaurante;
 import com.projeto.repository.PedidoRepository;
@@ -25,10 +27,12 @@ public class AnaliseService {
 
 	private final PedidoRepository pedidoRepository;
 	private final EscopoOperacao escopo;
+	private final Autorizacao autorizacao;
 
-	public AnaliseService(PedidoRepository pedidoRepository, EscopoOperacao escopo) {
+	public AnaliseService(PedidoRepository pedidoRepository, EscopoOperacao escopo, Autorizacao autorizacao) {
 		this.pedidoRepository = pedidoRepository;
 		this.escopo = escopo;
+		this.autorizacao = autorizacao;
 	}
 
 	public AnaliseDTO.Response consultar(LocalDate de, LocalDate ate) {
@@ -68,12 +72,42 @@ public class AnaliseService {
 						item.recomendacao(),
 						item.margemPercentual()))
 				.toList();
-		return new AnaliseDTO.Response(
+		AnaliseDTO.Response cheio = new AnaliseDTO.Response(
 				quantidadePedidos,
 				receita,
 				ticket,
 				resultado.limitePopularidade(),
 				resultado.margemMedia(),
 				itens);
+		return aplicarVisao(cheio);
+	}
+
+	public AnaliseDTO.Response exportar(LocalDate de, LocalDate ate) {
+		autorizacao.exigir(AuthorityFuncao.ANALISE_VER_FINANCEIRO);
+		return consultar(de, ate);
+	}
+
+	private AnaliseDTO.Response aplicarVisao(AnaliseDTO.Response cheio) {
+		boolean financeiro = autorizacao.tem(AuthorityFuncao.ANALISE_VER_FINANCEIRO);
+		boolean operacional = autorizacao.tem(AuthorityFuncao.ANALISE_VER_OPERACIONAL);
+		if (!financeiro && !operacional) {
+			throw new AccessDeniedException("Acesso negado");
+		}
+		if (financeiro) {
+			return cheio;
+		}
+		List<AnaliseDTO.Item> itens = cheio.itens().stream()
+				.map(item -> new AnaliseDTO.Item(
+						item.produtoId(),
+						item.nome(),
+						item.categoria(),
+						item.quantidade(),
+						null,
+						null,
+						item.classe(),
+						item.recomendacao(),
+						null))
+				.toList();
+		return new AnaliseDTO.Response(cheio.quantidadePedidos(), null, null, null, null, itens);
 	}
 }

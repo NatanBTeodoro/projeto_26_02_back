@@ -163,3 +163,166 @@ CREATE INDEX IF NOT EXISTS idx_pedido_restaurante ON pedido (restaurante_id);
 CREATE INDEX IF NOT EXISTS idx_pedido_usuario ON pedido (usuario_id);
 CREATE INDEX IF NOT EXISTS idx_pedido_comanda ON pedido (comanda_id);
 CREATE INDEX IF NOT EXISTS idx_comanda_restaurante ON comanda (restaurante_id);
+
+CREATE TABLE IF NOT EXISTS auditoria_financeira (
+    id BIGSERIAL PRIMARY KEY,
+    data_hora TIMESTAMPTZ NOT NULL,
+    restaurante_id BIGINT,
+    usuario_id BIGINT,
+    perfil_no_momento VARCHAR(20),
+    operacao VARCHAR(40) NOT NULL,
+    recurso_id BIGINT,
+    valor_antes VARCHAR(4000),
+    valor_depois VARCHAR(4000),
+    detalhe VARCHAR(4000)
+);
+
+CREATE INDEX IF NOT EXISTS idx_auditoria_financeira_restaurante ON auditoria_financeira (restaurante_id, data_hora);
+
+CREATE TABLE IF NOT EXISTS usuario_funcao_global (
+    id BIGSERIAL PRIMARY KEY,
+    usuario_id BIGINT NOT NULL REFERENCES usuario (id) ON DELETE CASCADE,
+    authority VARCHAR(40) NOT NULL,
+    atribuido_por BIGINT,
+    atribuido_em TIMESTAMPTZ NOT NULL,
+    CONSTRAINT uk_usuario_funcao_global UNIQUE (usuario_id, authority)
+);
+
+CREATE TABLE IF NOT EXISTS usuario_restaurante_funcao (
+    id BIGSERIAL PRIMARY KEY,
+    usuario_id BIGINT NOT NULL REFERENCES usuario (id) ON DELETE CASCADE,
+    restaurante_id BIGINT NOT NULL REFERENCES restaurante (id) ON DELETE CASCADE,
+    authority VARCHAR(40) NOT NULL,
+    atribuido_por BIGINT,
+    atribuido_em TIMESTAMPTZ NOT NULL,
+    CONSTRAINT uk_usuario_restaurante_funcao UNIQUE (usuario_id, restaurante_id, authority)
+);
+
+CREATE TABLE IF NOT EXISTS funcao_rede (
+    id BIGSERIAL PRIMARY KEY,
+    admin_id BIGINT NOT NULL REFERENCES usuario (id) ON DELETE CASCADE,
+    authority VARCHAR(40) NOT NULL,
+    rotulo VARCHAR(80) NOT NULL,
+    descricao VARCHAR(400),
+    ativo BOOLEAN NOT NULL DEFAULT TRUE,
+    CONSTRAINT uk_funcao_rede UNIQUE (admin_id, authority)
+);
+
+CREATE TABLE IF NOT EXISTS auditoria_permissao (
+    id BIGSERIAL PRIMARY KEY,
+    data_hora TIMESTAMPTZ NOT NULL,
+    autor_id BIGINT,
+    alvo_id BIGINT NOT NULL,
+    restaurante_id BIGINT,
+    authority VARCHAR(40) NOT NULL,
+    acao VARCHAR(20) NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_auditoria_permissao_alvo ON auditoria_permissao (alvo_id, data_hora);
+
+INSERT INTO usuario_funcao_global (usuario_id, authority, atribuido_em)
+SELECT u.id, f.authority, CURRENT_TIMESTAMP
+FROM usuario u
+JOIN (VALUES
+    ('PLATAFORMA_TI_GERIR'),
+    ('PLATAFORMA_ADMIN_GERIR'),
+    ('RECLAMACAO_LER'),
+    ('RECLAMACAO_RESPONDER')
+) AS f(authority) ON TRUE
+WHERE u.perfil = 'TI'
+AND NOT EXISTS (
+    SELECT 1 FROM usuario_funcao_global g WHERE g.usuario_id = u.id AND g.authority = f.authority
+);
+
+INSERT INTO usuario_funcao_global (usuario_id, authority, atribuido_em)
+SELECT u.id, f.authority, CURRENT_TIMESTAMP
+FROM usuario u
+JOIN (VALUES
+    ('CONTA_PROPRIA'),
+    ('RESTAURANTE_GERIR'),
+    ('EQUIPE_LER'),
+    ('EQUIPE_USUARIO_GERIR'),
+    ('EQUIPE_GESTOR_GERIR'),
+    ('EQUIPE_PERFIL_TROCAR'),
+    ('EQUIPE_SENHA_REDEFINIR'),
+    ('EQUIPE_FUNCAO_ATRIBUIR'),
+    ('CARDAPIO_LER'),
+    ('CARDAPIO_ESCREVER'),
+    ('CUSTO_LER'),
+    ('COMANDA_LER_PROPRIA'),
+    ('COMANDA_LER_UNIDADE'),
+    ('COMANDA_ABRIR_PROPRIA'),
+    ('COMANDA_ABRIR_UNIDADE'),
+    ('COMANDA_FECHAR'),
+    ('PEDIDO_LER_PROPRIO'),
+    ('PEDIDO_LER_UNIDADE'),
+    ('PEDIDO_LANCAR'),
+    ('PEDIDO_EDITAR'),
+    ('PEDIDO_CANCELAR'),
+    ('PEDIDO_ESTORNAR_ATIVO'),
+    ('PEDIDO_ESTORNAR_PAGO'),
+    ('ANALISE_VER_OPERACIONAL'),
+    ('ANALISE_VER_FINANCEIRO'),
+    ('REDE_VER'),
+    ('CATALOGO_FUNCOES_GERIR'),
+    ('RECLAMACAO_ABRIR'),
+    ('RECLAMACAO_LER'),
+    ('RECLAMACAO_RESPONDER'),
+    ('AUDITORIA_VER')
+) AS f(authority) ON TRUE
+WHERE u.perfil = 'ADMINISTRADOR'
+AND NOT EXISTS (
+    SELECT 1 FROM usuario_funcao_global g WHERE g.usuario_id = u.id AND g.authority = f.authority
+);
+
+INSERT INTO usuario_restaurante_funcao (usuario_id, restaurante_id, authority, atribuido_em)
+SELECT u.id, u.restaurante_id, f.authority, CURRENT_TIMESTAMP
+FROM usuario u
+JOIN (VALUES
+    ('CONTA_PROPRIA'),
+    ('EQUIPE_LER'),
+    ('EQUIPE_USUARIO_GERIR'),
+    ('EQUIPE_SENHA_REDEFINIR'),
+    ('EQUIPE_FUNCAO_ATRIBUIR'),
+    ('CARDAPIO_LER'),
+    ('CARDAPIO_ESCREVER'),
+    ('CUSTO_LER'),
+    ('COMANDA_LER_PROPRIA'),
+    ('COMANDA_LER_UNIDADE'),
+    ('COMANDA_ABRIR_PROPRIA'),
+    ('COMANDA_ABRIR_UNIDADE'),
+    ('COMANDA_FECHAR'),
+    ('PEDIDO_LER_PROPRIO'),
+    ('PEDIDO_LER_UNIDADE'),
+    ('PEDIDO_LANCAR'),
+    ('PEDIDO_EDITAR'),
+    ('PEDIDO_CANCELAR'),
+    ('PEDIDO_ESTORNAR_ATIVO'),
+    ('PEDIDO_ESTORNAR_PAGO'),
+    ('ANALISE_VER_OPERACIONAL'),
+    ('ANALISE_VER_FINANCEIRO'),
+    ('RECLAMACAO_ABRIR'),
+    ('RECLAMACAO_LER')
+) AS f(authority) ON TRUE
+WHERE u.perfil = 'GESTOR' AND u.restaurante_id IS NOT NULL
+AND NOT EXISTS (
+    SELECT 1 FROM usuario_restaurante_funcao g
+    WHERE g.usuario_id = u.id AND g.restaurante_id = u.restaurante_id AND g.authority = f.authority
+);
+
+INSERT INTO usuario_restaurante_funcao (usuario_id, restaurante_id, authority, atribuido_em)
+SELECT u.id, u.restaurante_id, f.authority, CURRENT_TIMESTAMP
+FROM usuario u
+JOIN (VALUES
+    ('CONTA_PROPRIA'),
+    ('COMANDA_LER_PROPRIA'),
+    ('COMANDA_ABRIR_PROPRIA'),
+    ('PEDIDO_LER_PROPRIO'),
+    ('PEDIDO_LANCAR'),
+    ('CARDAPIO_LER')
+) AS f(authority) ON TRUE
+WHERE u.perfil = 'USUARIO' AND u.restaurante_id IS NOT NULL
+AND NOT EXISTS (
+    SELECT 1 FROM usuario_restaurante_funcao g
+    WHERE g.usuario_id = u.id AND g.restaurante_id = u.restaurante_id AND g.authority = f.authority
+);

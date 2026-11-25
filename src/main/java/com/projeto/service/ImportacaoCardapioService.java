@@ -1,6 +1,9 @@
 package com.projeto.service;
 
+import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
@@ -12,6 +15,8 @@ import com.projeto.dto.ImportacaoCardapioDTO;
 import com.projeto.entity.Categoria;
 import com.projeto.entity.Produto;
 import com.projeto.entity.Restaurante;
+import com.projeto.entity.enums.AuthorityFuncao;
+import com.projeto.entity.enums.OperacaoAuditoria;
 import com.projeto.repository.CategoriaRepository;
 import com.projeto.repository.ProdutoRepository;
 import com.projeto.seguranca.EscopoOperacao;
@@ -23,27 +28,36 @@ public class ImportacaoCardapioService {
 	private final CategoriaRepository categoriaRepository;
 	private final ProdutoRepository produtoRepository;
 	private final EscopoOperacao escopo;
+	private final AuditoriaFinanceiraService auditoria;
+	private final Autorizacao autorizacao;
 
 	public ImportacaoCardapioService(
 			CategoriaRepository categoriaRepository,
 			ProdutoRepository produtoRepository,
-			EscopoOperacao escopo) {
+			EscopoOperacao escopo,
+			AuditoriaFinanceiraService auditoria,
+			Autorizacao autorizacao) {
 		this.categoriaRepository = categoriaRepository;
 		this.produtoRepository = produtoRepository;
 		this.escopo = escopo;
+		this.auditoria = auditoria;
+		this.autorizacao = autorizacao;
 	}
 
 	public byte[] modelo() {
+		// TODO(migracao): o modelo CSV continua sem CARDAPIO_LER para qualquer autenticado, como na fase 0.
 		return LeitorPlanilhaCardapio.modeloCsv();
 	}
 
 	@Transactional(readOnly = true)
 	public ImportacaoCardapioDTO.Previa prever(MultipartFile arquivo) {
+		autorizacao.exigir(AuthorityFuncao.CARDAPIO_LER);
 		return previa(arquivo);
 	}
 
 	@Transactional
 	public ImportacaoCardapioDTO.Resultado confirmar(MultipartFile arquivo, ImportacaoCardapioDTO.Modo modo) {
+		autorizacao.exigir(AuthorityFuncao.CARDAPIO_ESCREVER);
 		Restaurante restaurante = escopo.exigirOperavel();
 		ImportacaoCardapioDTO.Previa previa = previa(arquivo);
 		if (!ImportacaoCardapio.deveAplicar(modo, previa.resumo().erros())) {
@@ -59,6 +73,7 @@ public class ImportacaoCardapioService {
 		}
 
 		int gravados = 0;
+		List<Map<String, Object>> alteracoes = new ArrayList<>();
 		for (ImportacaoCardapioDTO.Linha linha : previa.linhas()) {
 			if (linha.situacao() == ImportacaoCardapioDTO.Situacao.ERRO) {
 				continue;
@@ -76,6 +91,9 @@ public class ImportacaoCardapioService {
 			}
 			String chaveProduto = chave(linha.categoria()) + "|" + chave(linha.nome());
 			Produto produto = produtos.get(chaveProduto);
+			BigDecimal precoAntes = null;
+			BigDecimal custoAntes = null;
+			boolean criou = produto == null;
 			if (produto == null) {
 				produto = new Produto();
 				produto.setCategoria(categoria);
@@ -83,12 +101,40 @@ public class ImportacaoCardapioService {
 				produto.setAtivo(true);
 				produto.setRestaurante(restaurante);
 				produtos.put(chaveProduto, produto);
+			} else {
+				precoAntes = produto.getPrecoAtual();
+				custoAntes = produto.getCustoAtual();
 			}
 			produto.setPrecoAtual(linha.preco());
 			produto.setCustoAtual(linha.custo());
-			produtoRepository.save(produto);
+			Produto salvo = produtoRepository.save(produto);
+			Map<String, Object> mudanca = new LinkedHashMap<>();
+			mudanca.put("produtoId", salvo.getId());
+			mudanca.put("nome", salvo.getNome());
+			mudanca.put("criou", criou);
+			mudanca.put("precoAntes", precoAntes);
+			mudanca.put("custoAntes", custoAntes);
+			mudanca.put("precoDepois", salvo.getPrecoAtual());
+			mudanca.put("custoDepois", salvo.getCustoAtual());
+			alteracoes.add(mudanca);
 			gravados++;
 		}
+		List<Map<String, Object>> antes = new ArrayList<>();
+		for (Map<String, Object> item : alteracoes) {
+			Map<String, Object> linhaAntes = new LinkedHashMap<>();
+			linhaAntes.put("produtoId", item.get("produtoId"));
+			linhaAntes.put("preco", item.get("precoAntes"));
+			linhaAntes.put("custo", item.get("custoAntes"));
+			antes.add(linhaAntes);
+		}
+		auditoria.registrar(
+				restaurante.getId(),
+				escopo.usuario(),
+				OperacaoAuditoria.IMPORTACAO_CONFIRMADA,
+				restaurante.getId(),
+				auditoria.json(antes),
+				auditoria.json(alteracoes),
+				"gravados=" + gravados);
 		return new ImportacaoCardapioDTO.Resultado(true, gravados, previa.linhas(), previa.resumo());
 	}
 

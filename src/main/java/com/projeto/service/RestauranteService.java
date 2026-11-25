@@ -197,6 +197,7 @@ public class RestauranteService {
 
 	private Usuario exigirAdmin() {
 		Usuario atual = escopo.usuario();
+		// vinculo, nao funcao
 		if (atual.getPerfil() != Perfil.ADMINISTRADOR) {
 			throw new AccessDeniedException("Acesso negado");
 		}

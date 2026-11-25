@@ -11,7 +11,8 @@ public final class TrocaPerfil {
 	}
 
 	public static void validar(Perfil autor, Long autorId, Long alvoId, Perfil perfilAlvo, Perfil novo) {
-		if (autor != Perfil.ADMINISTRADOR) {
+		// A função EQUIPE_PERFIL_TROCAR é exigida em UsuarioService. O autor fica para o teste de vínculo.
+		if (autor != Perfil.ADMINISTRADOR && autor != Perfil.GESTOR) {
 			throw new AccessDeniedException("Acesso negado");
 		}
 		if (alvoId != null && alvoId.equals(autorId)) {

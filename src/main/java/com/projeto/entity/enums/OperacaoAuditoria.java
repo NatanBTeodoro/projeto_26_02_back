@@ -1,0 +1,11 @@
+package com.projeto.entity.enums;
+
+public enum OperacaoAuditoria {
+	FECHAMENTO_COMANDA,
+	ESTORNO_ATIVO,
+	ESTORNO_PAGO,
+	CANCELAMENTO,
+	PRODUTO_CRIADO,
+	PRODUTO_ALTERADO,
+	IMPORTACAO_CONFIRMADA
+}

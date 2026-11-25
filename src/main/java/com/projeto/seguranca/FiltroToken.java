@@ -10,6 +10,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import com.projeto.entity.Usuario;
 import com.projeto.repository.UsuarioRepository;
+import com.projeto.service.FuncaoConsulta;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -19,9 +20,11 @@ import jakarta.servlet.http.HttpServletResponse;
 public class FiltroToken extends OncePerRequestFilter {
 
 	private final UsuarioRepository usuarios;
+	private final FuncaoConsulta funcoes;
 
-	public FiltroToken(UsuarioRepository usuarios) {
+	public FiltroToken(UsuarioRepository usuarios, FuncaoConsulta funcoes) {
 		this.usuarios = usuarios;
+		this.funcoes = funcoes;
 	}
 
 	@Override
@@ -33,7 +36,10 @@ public class FiltroToken extends OncePerRequestFilter {
 			if (!token.isEmpty()) {
 				Optional<Usuario> encontrado = usuarios.findByTokenAcesso(token);
 				if (encontrado != null && encontrado.isPresent() && encontrado.get().isAtivo()) {
-					UsuarioDetails detalhes = new UsuarioDetails(encontrado.get());
+					Usuario conta = encontrado.get();
+					UsuarioDetails detalhes = funcoes == null
+							? new UsuarioDetails(conta)
+							: new UsuarioDetails(conta, funcoes.doUsuario(conta.getId()));
 					var autenticacao = new UsernamePasswordAuthenticationToken(
 							detalhes, null, detalhes.getAuthorities());
 					SecurityContextHolder.getContext().setAuthentication(autenticacao);

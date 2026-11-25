@@ -39,7 +39,7 @@ public class AnaliseController {
 	public ResponseEntity<byte[]> exportar(
 			@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate de,
 			@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate ate) {
-		AnaliseDTO.Response analise = analiseService.consultar(de, ate);
+		AnaliseDTO.Response analise = analiseService.exportar(de, ate);
 		String nome = "matriz-" + de + "_a_" + ate + ".csv";
 		return ResponseEntity.ok()
 				.header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + nome + "\"")

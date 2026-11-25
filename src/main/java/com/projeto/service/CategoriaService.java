@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.projeto.dto.CategoriaDTO;
 import com.projeto.entity.Categoria;
 import com.projeto.entity.Restaurante;
+import com.projeto.entity.enums.AuthorityFuncao;
 import com.projeto.repository.CategoriaRepository;
 import com.projeto.seguranca.EscopoOperacao;
 import com.projeto.util.exception.RecursoNaoEncontradoException;
@@ -21,13 +22,16 @@ public class CategoriaService {
 
 	private final CategoriaRepository categoriaRepository;
 	private final EscopoOperacao escopo;
+	private final Autorizacao autorizacao;
 
-	public CategoriaService(CategoriaRepository categoriaRepository, EscopoOperacao escopo) {
+	public CategoriaService(CategoriaRepository categoriaRepository, EscopoOperacao escopo, Autorizacao autorizacao) {
 		this.categoriaRepository = categoriaRepository;
 		this.escopo = escopo;
+		this.autorizacao = autorizacao;
 	}
 
 	public List<CategoriaDTO.Response> listar() {
+		autorizacao.exigir(AuthorityFuncao.CARDAPIO_LER);
 		Restaurante restaurante = escopo.restauranteDoContexto();
 		Collator ordem = Collator.getInstance(Locale.forLanguageTag("pt-BR"));
 		ordem.setStrength(Collator.PRIMARY);
@@ -39,6 +43,7 @@ public class CategoriaService {
 
 	@Transactional
 	public CategoriaDTO.Response criar(CategoriaDTO.Create dto) {
+		autorizacao.exigir(AuthorityFuncao.CARDAPIO_ESCREVER);
 		Restaurante restaurante = escopo.exigirOperavel();
 		Categoria categoria = new Categoria();
 		categoria.setNome(dto.nome().trim());
@@ -49,6 +54,7 @@ public class CategoriaService {
 
 	@Transactional
 	public CategoriaDTO.Response atualizar(Long id, CategoriaDTO.Update dto) {
+		autorizacao.exigir(AuthorityFuncao.CARDAPIO_ESCREVER);
 		escopo.exigirOperavel();
 		Categoria categoria = carregar(id);
 		categoria.setNome(dto.nome().trim());

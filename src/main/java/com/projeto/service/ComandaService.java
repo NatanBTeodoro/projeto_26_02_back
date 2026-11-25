@@ -1,7 +1,10 @@
 package com.projeto.service;
 
+import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
@@ -12,7 +15,11 @@ import com.projeto.entity.Comanda;
 import com.projeto.entity.Pedido;
 import com.projeto.entity.Restaurante;
 import com.projeto.entity.Usuario;
+import com.projeto.entity.enums.AuthorityFuncao;
+import com.projeto.entity.enums.OperacaoAuditoria;
 import com.projeto.entity.enums.Perfil;
+import com.projeto.entity.enums.StatusPedido;
+import com.projeto.entity.enums.StatusRestaurante;
 import com.projeto.repository.ComandaRepository;
 import com.projeto.repository.PedidoRepository;
 import com.projeto.repository.UsuarioRepository;
@@ -28,24 +35,34 @@ public class ComandaService {
 	private final PedidoRepository pedidoRepository;
 	private final UsuarioRepository usuarioRepository;
 	private final EscopoOperacao escopo;
+	private final AuditoriaFinanceiraService auditoria;
+	private final Autorizacao autorizacao;
 
 	public ComandaService(
 			ComandaRepository comandaRepository,
 			PedidoRepository pedidoRepository,
 			UsuarioRepository usuarioRepository,
-			EscopoOperacao escopo) {
+			EscopoOperacao escopo,
+			AuditoriaFinanceiraService auditoria,
+			Autorizacao autorizacao) {
 		this.comandaRepository = comandaRepository;
 		this.pedidoRepository = pedidoRepository;
 		this.usuarioRepository = usuarioRepository;
 		this.escopo = escopo;
+		this.auditoria = auditoria;
+		this.autorizacao = autorizacao;
 	}
 
 	public List<ComandaDTO.Response> listar(Long usuarioId) {
-		Usuario atual = escopo.usuario();
-		if (atual.getPerfil() == Perfil.USUARIO) {
+		if (autorizacao.tem(AuthorityFuncao.COMANDA_LER_PROPRIA)
+				&& !autorizacao.tem(AuthorityFuncao.COMANDA_LER_UNIDADE)) {
+			Usuario atual = escopo.usuario();
 			return comandaRepository.findByUsuarioIdOrderByIdDesc(atual.getId()).stream()
 					.map(ComandaDTO.Response::de)
 					.toList();
+		}
+		if (!autorizacao.tem(AuthorityFuncao.COMANDA_LER_UNIDADE)) {
+			throw new AccessDeniedException("Acesso negado");
 		}
 		Restaurante restaurante = escopo.restauranteDoContexto();
 		if (usuarioId == null) {
@@ -63,13 +80,13 @@ public class ComandaService {
 		Usuario atual = escopo.usuario();
 		Restaurante restaurante = escopo.exigirOperavel();
 		Usuario dono;
-		if (atual.getPerfil() == Perfil.USUARIO) {
-			dono = atual;
-		} else if (atual.getPerfil() == Perfil.GESTOR || atual.getPerfil() == Perfil.ADMINISTRADOR) {
+		if (autorizacao.tem(AuthorityFuncao.COMANDA_ABRIR_UNIDADE)) {
 			if (dto == null || dto.usuarioId() == null) {
 				throw new RegraDeNegocioException("Informe o usuário");
 			}
 			dono = usuarioDoRestaurante(restaurante, dto.usuarioId());
+		} else if (autorizacao.tem(AuthorityFuncao.COMANDA_ABRIR_PROPRIA)) {
+			dono = atual;
 		} else {
 			throw new AccessDeniedException("Acesso negado");
 		}
@@ -90,23 +107,43 @@ public class ComandaService {
 
 	@Transactional
 	public ComandaDTO.Response fechar(Long id) {
-		Usuario atual = escopo.usuario();
-		if (atual.getPerfil() != Perfil.GESTOR && atual.getPerfil() != Perfil.ADMINISTRADOR) {
-			throw new AccessDeniedException("Acesso negado");
-		}
-		Restaurante restaurante = escopo.exigirOperavel();
 		Comanda comanda = comandaRepository.findById(id)
 				.orElseThrow(() -> new RecursoNaoEncontradoException("Comanda não encontrada"));
+		Restaurante restaurante = escopo.restauranteDoContexto();
 		if (comanda.getRestaurante() == null || !comanda.getRestaurante().getId().equals(restaurante.getId())) {
-			throw new AccessDeniedException("Acesso negado");
+			throw new RecursoNaoEncontradoException("Comanda não encontrada");
+		}
+		if (restaurante.getStatus() != StatusRestaurante.ATIVO) {
+			throw new RegraDeNegocioException("Restaurante fechado ou inativo não pode ser alterado");
 		}
 		if (!comanda.isAberta()) {
 			throw new RegraDeNegocioException("Comanda já fechada");
 		}
+		autorizacao.exigir(AuthorityFuncao.COMANDA_FECHAR);
+		Usuario atual = escopo.usuario();
 		List<Pedido> pedidos = pedidoRepository.findByComandaId(comanda.getId());
+		List<Map<String, Object>> reconhecidos = new ArrayList<>();
+		BigDecimal total = BigDecimal.ZERO;
+		for (Pedido pedido : pedidos) {
+			if (pedido.getStatus() != StatusPedido.ATIVO) {
+				continue;
+			}
+			BigDecimal valor = AuditoriaFinanceiraService.valor(pedido);
+			total = total.add(valor);
+			reconhecidos.add(Map.of("pedidoId", pedido.getId(), "valor", valor));
+		}
 		FechamentoComanda.aplicar(comanda, pedidos);
 		pedidoRepository.saveAll(pedidos);
-		return ComandaDTO.Response.de(comandaRepository.save(comanda));
+		Comanda salva = comandaRepository.save(comanda);
+		auditoria.registrar(
+				restaurante.getId(),
+				atual,
+				OperacaoAuditoria.FECHAMENTO_COMANDA,
+				salva.getId(),
+				auditoria.json(Map.of("aberta", true, "pedidos", reconhecidos)),
+				auditoria.json(Map.of("aberta", false, "valorReconhecido", total, "pedidos", reconhecidos)),
+				"pedidosPagos=" + reconhecidos.size());
+		return ComandaDTO.Response.de(salva);
 	}
 
 	@Transactional
@@ -119,6 +156,8 @@ public class ComandaService {
 	private Usuario usuarioDoRestaurante(Restaurante restaurante, Long usuarioId) {
 		Usuario usuario = usuarioRepository.findById(usuarioId)
 				.orElseThrow(() -> new RecursoNaoEncontradoException("Usuário não encontrado"));
+		// vinculo, nao funcao: comanda de terceiro aponta para conta de salão
+		// vinculo, nao funcao: a comanda pertence a uma conta USUARIO do restaurante.
 		if (usuario.getPerfil() != Perfil.USUARIO
 				|| usuario.getRestaurante() == null
 				|| !usuario.getRestaurante().getId().equals(restaurante.getId())) {

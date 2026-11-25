@@ -18,10 +18,10 @@ class TrocaPerfilTest {
 	}
 
 	@Test
-	void gestorNaoTrocaEAdminNaoTrocaOProprio() {
+	void tiNaoTrocaEAdminNaoTrocaOProprio() {
 		assertThrows(
 				AccessDeniedException.class,
-				() -> TrocaPerfil.validar(Perfil.GESTOR, 3L, 4L, Perfil.USUARIO, Perfil.GESTOR));
+				() -> TrocaPerfil.validar(Perfil.TI, 3L, 4L, Perfil.USUARIO, Perfil.GESTOR));
 		RegraDeNegocioException propria = assertThrows(
 				RegraDeNegocioException.class,
 				() -> TrocaPerfil.validar(Perfil.ADMINISTRADOR, 1L, 1L, Perfil.GESTOR, Perfil.USUARIO));

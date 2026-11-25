@@ -7,21 +7,35 @@ import java.util.Arrays;
 import org.springframework.stereotype.Service;
 
 import com.projeto.dto.AnaliseDTO;
+import com.projeto.entity.enums.AuthorityFuncao;
 
 @Service
 public class CsvMatriz {
 
+	private final Autorizacao autorizacao;
+
+	public CsvMatriz(Autorizacao autorizacao) {
+		this.autorizacao = autorizacao;
+	}
+
 	public byte[] gerar(AnaliseDTO.Response analise) {
+		boolean financeiro = autorizacao.tem(AuthorityFuncao.ANALISE_VER_FINANCEIRO);
 		StringBuilder texto = new StringBuilder();
-		texto.append("Produto;Categoria;Quantidade;Popularidade (%);Lucro unitário (R$);Margem (%);Classe;Sugestão\n");
+		if (financeiro) {
+			texto.append("Produto;Categoria;Quantidade;Popularidade (%);Lucro unitário (R$);Margem (%);Classe;Sugestão\n");
+		} else {
+			texto.append("Produto;Categoria;Quantidade;Classe;Sugestão\n");
+		}
 		for (AnaliseDTO.Item linha : analise.itens()) {
 			texto.append(campo(linha.nome())).append(';')
 					.append(campo(linha.categoria())).append(';')
-					.append(linha.quantidade()).append(';')
-					.append(decimal(linha.popularidade())).append(';')
-					.append(decimal(linha.margem())).append(';')
-					.append(decimal(linha.margemPercentual())).append(';')
-					.append(campo(linha.classe().getRotulo())).append(';')
+					.append(linha.quantidade()).append(';');
+			if (financeiro) {
+				texto.append(decimal(linha.popularidade())).append(';')
+						.append(decimal(linha.margem())).append(';')
+						.append(decimal(linha.margemPercentual())).append(';');
+			}
+			texto.append(campo(linha.classe().getRotulo())).append(';')
 					.append(campo(linha.recomendacao())).append('\n');
 		}
 		byte[] corpo = texto.toString().getBytes(StandardCharsets.UTF_8);

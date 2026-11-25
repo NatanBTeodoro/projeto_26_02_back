@@ -10,6 +10,7 @@ public final class RotuloAutor {
 	}
 
 	public static String direto(Perfil perfil, String nome, String email) {
+		// vinculo, nao funcao: só o texto da assinatura.
 		if (perfil == Perfil.ADMINISTRADOR) {
 			return "Admin";
 		}

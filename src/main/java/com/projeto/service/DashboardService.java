@@ -17,6 +17,7 @@ import com.projeto.dto.DashboardDTO;
 import com.projeto.entity.Pedido;
 import com.projeto.entity.PedidoItem;
 import com.projeto.entity.Restaurante;
+import com.projeto.entity.enums.AuthorityFuncao;
 import com.projeto.entity.enums.ClasseMenu;
 import com.projeto.entity.enums.StatusPedido;
 import com.projeto.repository.PedidoRepository;
@@ -29,10 +30,12 @@ public class DashboardService {
 
 	private final PedidoRepository pedidoRepository;
 	private final EscopoOperacao escopo;
+	private final Autorizacao autorizacao;
 
-	public DashboardService(PedidoRepository pedidoRepository, EscopoOperacao escopo) {
+	public DashboardService(PedidoRepository pedidoRepository, EscopoOperacao escopo, Autorizacao autorizacao) {
 		this.pedidoRepository = pedidoRepository;
 		this.escopo = escopo;
+		this.autorizacao = autorizacao;
 	}
 
 	public DashboardDTO.Response consultar(LocalDate de, LocalDate ate) {
@@ -45,8 +48,27 @@ public class DashboardService {
 		Restaurante restaurante = escopo.restauranteDoContexto();
 		Instant inicio = de.atStartOfDay(AnaliseService.FUSO).toInstant();
 		Instant fim = ate.plusDays(1).atStartOfDay(AnaliseService.FUSO).toInstant();
-		return montar(de, ate, pedidoRepository.findByRestauranteIdAndDataHoraGreaterThanEqualAndDataHoraLessThan(
+		boolean financeiro = autorizacao.tem(AuthorityFuncao.ANALISE_VER_FINANCEIRO);
+		boolean operacional = autorizacao.tem(AuthorityFuncao.ANALISE_VER_OPERACIONAL);
+		if (!financeiro && !operacional) {
+			throw new org.springframework.security.access.AccessDeniedException("Acesso negado");
+		}
+		DashboardDTO.Response cheio = montar(de, ate, pedidoRepository.findByRestauranteIdAndDataHoraGreaterThanEqualAndDataHoraLessThan(
 				restaurante.getId(), inicio, fim));
+		if (financeiro) {
+			return cheio;
+		}
+		return new DashboardDTO.Response(
+				null,
+				cheio.totalPedidos(),
+				null,
+				List.of(),
+				cheio.topItens().stream()
+						.map(item -> new DashboardDTO.TopItem(item.produtoId(), item.nome(), item.quantidade(), null, null))
+						.toList(),
+				cheio.itensPorClasse(),
+				null,
+				null);
 	}
 
 	static DashboardDTO.Response montar(LocalDate de, LocalDate ate, List<Pedido> pedidos) {

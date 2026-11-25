@@ -39,13 +39,17 @@ public final class ProdutoDTO {
 			boolean ativo) {
 
 		public static Response de(Produto produto) {
+			return de(produto, true);
+		}
+
+		public static Response de(Produto produto, boolean incluirCusto) {
 			return new Response(
 					produto.getId(),
 					produto.getCategoria().getId(),
 					produto.getCategoria().getNome(),
 					produto.getNome(),
 					produto.getPrecoAtual(),
-					produto.getCustoAtual(),
+					incluirCusto ? produto.getCustoAtual() : null,
 					produto.isAtivo());
 		}
 	}

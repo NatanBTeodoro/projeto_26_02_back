@@ -20,8 +20,11 @@ import com.projeto.entity.PedidoItem;
 import com.projeto.entity.Produto;
 import com.projeto.entity.Restaurante;
 import com.projeto.entity.Usuario;
+import com.projeto.entity.enums.AuthorityFuncao;
+import com.projeto.entity.enums.OperacaoAuditoria;
 import com.projeto.entity.enums.Perfil;
 import com.projeto.entity.enums.StatusPedido;
+import com.projeto.entity.enums.StatusRestaurante;
 import com.projeto.repository.ComandaRepository;
 import com.projeto.repository.PedidoRepository;
 import com.projeto.repository.ProdutoRepository;
@@ -40,6 +43,8 @@ public class PedidoService {
 	private final ComandaService comandaService;
 	private final UsuarioRepository usuarioRepository;
 	private final EscopoOperacao escopo;
+	private final AuditoriaFinanceiraService auditoria;
+	private final Autorizacao autorizacao;
 
 	public PedidoService(
 			PedidoRepository pedidoRepository,
@@ -47,25 +52,29 @@ public class PedidoService {
 			ComandaRepository comandaRepository,
 			ComandaService comandaService,
 			UsuarioRepository usuarioRepository,
-			EscopoOperacao escopo) {
+			EscopoOperacao escopo,
+			AuditoriaFinanceiraService auditoria,
+			Autorizacao autorizacao) {
 		this.pedidoRepository = pedidoRepository;
 		this.produtoRepository = produtoRepository;
 		this.comandaRepository = comandaRepository;
 		this.comandaService = comandaService;
 		this.usuarioRepository = usuarioRepository;
 		this.escopo = escopo;
+		this.auditoria = auditoria;
+		this.autorizacao = autorizacao;
 	}
 
 	public List<PedidoDTO.Response> listar() {
-		Usuario atual = escopo.usuario();
-		if (atual.getPerfil() == Perfil.USUARIO) {
-			return pedidoRepository.findByUsuarioIdOrderByDataHoraDesc(atual.getId()).stream()
+		if (autorizacao.tem(AuthorityFuncao.PEDIDO_LER_UNIDADE)) {
+			Restaurante restaurante = escopo.restauranteDoContexto();
+			return pedidoRepository.findByRestauranteIdOrderByDataHoraDesc(restaurante.getId()).stream()
 					.map(PedidoDTO.Response::de)
 					.toList();
 		}
-		if (atual.getPerfil() == Perfil.GESTOR || atual.getPerfil() == Perfil.ADMINISTRADOR) {
-			Restaurante restaurante = escopo.restauranteDoContexto();
-			return pedidoRepository.findByRestauranteIdOrderByDataHoraDesc(restaurante.getId()).stream()
+		if (autorizacao.tem(AuthorityFuncao.PEDIDO_LER_PROPRIO)) {
+			Usuario atual = escopo.usuario();
+			return pedidoRepository.findByUsuarioIdOrderByDataHoraDesc(atual.getId()).stream()
 					.map(PedidoDTO.Response::de)
 					.toList();
 		}
@@ -76,6 +85,7 @@ public class PedidoService {
 	public PedidoDTO.Response criar(PedidoDTO.Create dto) {
 		Instant agora = Instant.now();
 		RegrasPedido.validarVenda(dto.dataHora(), dto.mesa(), dto.nomeCliente(), dto.itens(), agora);
+		autorizacao.exigir(AuthorityFuncao.PEDIDO_LANCAR);
 		Usuario atual = escopo.usuario();
 		Restaurante restaurante = escopo.exigirOperavel();
 		Usuario autorPedido = autorDoPedido(atual, restaurante, dto.usuarioId());
@@ -98,26 +108,65 @@ public class PedidoService {
 	@Transactional
 	public PedidoDTO.Response estornar(Long id, PedidoDTO.Estorno dto) {
 		Pedido pedido = carregarMutavel(id, true);
+		if (pedido.getStatus() == StatusPedido.PAGO) {
+			autorizacao.exigir(AuthorityFuncao.PEDIDO_ESTORNAR_PAGO);
+		} else {
+			autorizacao.exigir(AuthorityFuncao.PEDIDO_ESTORNAR_ATIVO);
+		}
+		StatusPedido anterior = pedido.getStatus();
+		String antes = auditoria.json(java.util.Map.of(
+				"status", anterior.name(),
+				"valor", AuditoriaFinanceiraService.valor(pedido)));
 		pedido.setStatus(StatusPedido.ESTORNADO);
 		pedido.setMotivoEstorno(dto.motivo().trim());
 		pedido.setDataHoraEstorno(Instant.now());
 		pedido.setAutorEstorno(escopo.autor());
-		return PedidoDTO.Response.de(pedidoRepository.save(pedido));
+		Pedido salvo = pedidoRepository.save(pedido);
+		OperacaoAuditoria operacao = anterior == StatusPedido.PAGO
+				? OperacaoAuditoria.ESTORNO_PAGO
+				: OperacaoAuditoria.ESTORNO_ATIVO;
+		auditoria.registrar(
+				restauranteId(salvo),
+				escopo.usuario(),
+				operacao,
+				salvo.getId(),
+				antes,
+				auditoria.json(java.util.Map.of(
+						"status", StatusPedido.ESTORNADO.name(),
+						"valor", AuditoriaFinanceiraService.valor(salvo))),
+				dto.motivo().trim());
+		return PedidoDTO.Response.de(salvo);
 	}
 
 	@Transactional
 	public PedidoDTO.Response cancelar(Long id, PedidoDTO.Cancelamento dto) {
 		Pedido pedido = carregarMutavel(id, false);
+		autorizacao.exigir(AuthorityFuncao.PEDIDO_CANCELAR);
+		String antes = auditoria.json(java.util.Map.of(
+				"status", pedido.getStatus().name(),
+				"valor", AuditoriaFinanceiraService.valor(pedido)));
 		pedido.setStatus(StatusPedido.CANCELADO);
 		pedido.setMotivoCancelamento(dto.motivo().trim());
 		pedido.setDataHoraCancelamento(Instant.now());
 		pedido.setAutorCancelamento(escopo.autor());
-		return PedidoDTO.Response.de(pedidoRepository.save(pedido));
+		Pedido salvo = pedidoRepository.save(pedido);
+		auditoria.registrar(
+				restauranteId(salvo),
+				escopo.usuario(),
+				OperacaoAuditoria.CANCELAMENTO,
+				salvo.getId(),
+				antes,
+				auditoria.json(java.util.Map.of(
+						"status", StatusPedido.CANCELADO.name(),
+						"valor", AuditoriaFinanceiraService.valor(salvo))),
+				dto.motivo().trim());
+		return PedidoDTO.Response.de(salvo);
 	}
 
 	@Transactional
 	public PedidoDTO.Response editar(Long id, PedidoDTO.Edicao dto) {
 		Pedido pedido = carregarMutavel(id, false);
+		autorizacao.exigir(AuthorityFuncao.PEDIDO_EDITAR);
 		Instant agora = Instant.now();
 		RegrasPedido.validarVenda(null, dto.mesa(), dto.nomeCliente(), dto.itens(), agora);
 		Map<Long, Integer> quantidades = agrupar(dto.itens());
@@ -174,17 +223,27 @@ public class PedidoService {
 	}
 
 	private Usuario autorDoPedido(Usuario atual, Restaurante restaurante, Long usuarioId) {
-		if (atual.getPerfil() == Perfil.USUARIO) {
-			return atual;
+		if (autorizacao.tem(AuthorityFuncao.COMANDA_ABRIR_UNIDADE)) {
+			return usuarioDaUnidade(restaurante, usuarioId);
 		}
-		if (atual.getPerfil() != Perfil.GESTOR && atual.getPerfil() != Perfil.ADMINISTRADOR) {
+		if (!autorizacao.tem(AuthorityFuncao.COMANDA_ABRIR_PROPRIA)
+				&& !autorizacao.tem(AuthorityFuncao.PEDIDO_LER_PROPRIO)) {
 			throw new AccessDeniedException("Acesso negado");
 		}
+		if (usuarioId != null && !usuarioId.equals(atual.getId())) {
+			throw new AccessDeniedException("Acesso negado");
+		}
+		return atual;
+	}
+
+	private Usuario usuarioDaUnidade(Restaurante restaurante, Long usuarioId) {
 		if (usuarioId == null) {
 			throw new RegraDeNegocioException("Informe o usuário");
 		}
 		Usuario usuario = usuarioRepository.findById(usuarioId)
 				.orElseThrow(() -> new RecursoNaoEncontradoException("Usuário não encontrado"));
+		// vinculo, nao funcao: o dono do pedido é uma conta de salão da casa
+		// vinculo, nao funcao: o alvo do pedido tem de ser conta USUARIO do restaurante.
 		if (usuario.getPerfil() != Perfil.USUARIO
 				|| !usuario.isAtivo()
 				|| usuario.getRestaurante() == null
@@ -195,7 +254,7 @@ public class PedidoService {
 	}
 
 	private Comanda resolverComanda(Usuario atual, Restaurante restaurante, Usuario autorPedido, Long comandaId) {
-		if (atual.getPerfil() == Perfil.USUARIO && comandaId == null) {
+		if (!autorizacao.tem(AuthorityFuncao.COMANDA_ABRIR_UNIDADE) && comandaId == null) {
 			throw new RegraDeNegocioException("Abra uma comanda antes de lançar o pedido");
 		}
 		if (comandaId == null) {
@@ -218,20 +277,23 @@ public class PedidoService {
 	private Pedido carregarMutavel(Long id, boolean aceitaPago) {
 		Pedido pedido = pedidoRepository.findById(id)
 				.orElseThrow(() -> new RecursoNaoEncontradoException("Pedido não encontrado"));
+		Restaurante contexto = escopo.restauranteDoContexto();
+		if (pedido.getRestaurante() == null || !pedido.getRestaurante().getId().equals(contexto.getId())) {
+			throw new RecursoNaoEncontradoException("Pedido não encontrado");
+		}
+		if (contexto.getStatus() != StatusRestaurante.ATIVO) {
+			throw new RegraDeNegocioException("Restaurante fechado ou inativo não pode ser alterado");
+		}
 		boolean aberto = pedido.getStatus() == StatusPedido.ATIVO;
 		boolean pago = aceitaPago && pedido.getStatus() == StatusPedido.PAGO;
 		if (!aberto && !pago) {
 			throw new RegraDeNegocioException("Pedido já encerrado");
 		}
-		Usuario atual = escopo.usuario();
-		if (atual.getPerfil() != Perfil.GESTOR && atual.getPerfil() != Perfil.ADMINISTRADOR) {
-			throw new AccessDeniedException("Acesso negado");
-		}
-		Restaurante contexto = escopo.exigirOperavel();
-		if (pedido.getRestaurante() == null || !pedido.getRestaurante().getId().equals(contexto.getId())) {
-			throw new AccessDeniedException("Acesso negado");
-		}
 		return pedido;
+	}
+
+	private Long restauranteId(Pedido pedido) {
+		return pedido.getRestaurante() == null ? null : pedido.getRestaurante().getId();
 	}
 
 	private String descrever(Pedido pedido, Integer mesa, String cliente, Map<Long, Integer> quantidades) {

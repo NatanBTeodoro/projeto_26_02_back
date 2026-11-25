@@ -1,5 +1,6 @@
 package com.projeto.config;
 
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.context.annotation.Bean;
@@ -22,6 +23,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import com.projeto.repository.UsuarioRepository;
 import com.projeto.seguranca.FiltroToken;
 import com.projeto.seguranca.JsonAuthHandlers;
+import com.projeto.service.FuncaoConsulta;
 
 @Configuration
 public class SecurityConfig {
@@ -59,12 +61,13 @@ public class SecurityConfig {
 			HttpSecurity http,
 			JsonAuthHandlers jsonAuth,
 			UsuarioRepository usuarios,
+			ObjectProvider<FuncaoConsulta> funcoes,
 			CorsConfigurationSource corsConfigurationSource) throws Exception {
 		http
 				.cors(cors -> cors.configurationSource(corsConfigurationSource))
 				.csrf(AbstractHttpConfigurer::disable)
 				.sessionManagement(sessao -> sessao.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-				.addFilterBefore(new FiltroToken(usuarios), AuthorizationFilter.class)
+				.addFilterBefore(new FiltroToken(usuarios, funcoes.getIfAvailable()), AuthorizationFilter.class)
 				.exceptionHandling(ex -> ex
 						.authenticationEntryPoint(jsonAuth)
 						.accessDeniedHandler(jsonAuth))
@@ -88,6 +91,20 @@ public class SecurityConfig {
 						.requestMatchers("/api/curva-abc/**").hasRole("ADMINISTRADOR")
 						.requestMatchers("/api/painel-admin/**").hasRole("ADMINISTRADOR")
 						.requestMatchers("/api/usuarios", "/api/usuarios/**").hasAnyRole("ADMINISTRADOR", "GESTOR")
+						// Dupla trava: o cargo continua obrigatório no filtro. A função é exigida no serviço.
+						.requestMatchers(HttpMethod.POST, "/api/comandas/*/fechar").hasAnyRole("GESTOR", "ADMINISTRADOR")
+						.requestMatchers(HttpMethod.POST, "/api/pedidos/*/estorno").hasAnyRole("GESTOR", "ADMINISTRADOR")
+						.requestMatchers(HttpMethod.POST, "/api/pedidos/*/cancelamento").hasAnyRole("GESTOR", "ADMINISTRADOR")
+						.requestMatchers(HttpMethod.POST, "/api/categorias", "/api/categorias/**").hasAnyAuthority("ROLE_GESTOR", "ROLE_ADMINISTRADOR", "FUNCAO_CARDAPIO_ESCREVER")
+						.requestMatchers(HttpMethod.PUT, "/api/categorias", "/api/categorias/**").hasAnyAuthority("ROLE_GESTOR", "ROLE_ADMINISTRADOR", "FUNCAO_CARDAPIO_ESCREVER")
+						.requestMatchers(HttpMethod.POST, "/api/produtos/importar/confirmar").hasAnyAuthority("ROLE_GESTOR", "ROLE_ADMINISTRADOR", "FUNCAO_CARDAPIO_ESCREVER")
+						.requestMatchers(HttpMethod.POST, "/api/produtos").hasAnyAuthority("ROLE_GESTOR", "ROLE_ADMINISTRADOR", "FUNCAO_CARDAPIO_ESCREVER")
+						.requestMatchers(HttpMethod.PUT, "/api/produtos", "/api/produtos/**").hasAnyAuthority("ROLE_GESTOR", "ROLE_ADMINISTRADOR", "FUNCAO_CARDAPIO_ESCREVER")
+						.requestMatchers(HttpMethod.GET, "/api/dashboard").hasAnyAuthority("ROLE_GESTOR", "ROLE_ADMINISTRADOR", "FUNCAO_ANALISE_VER_OPERACIONAL", "FUNCAO_ANALISE_VER_FINANCEIRO")
+						.requestMatchers(HttpMethod.GET, "/api/analise", "/api/analise/**").hasAnyAuthority("ROLE_GESTOR", "ROLE_ADMINISTRADOR", "FUNCAO_ANALISE_VER_OPERACIONAL", "FUNCAO_ANALISE_VER_FINANCEIRO")
+						.requestMatchers("/api/admin/funcoes", "/api/admin/funcoes/**").hasAnyAuthority("ROLE_ADMINISTRADOR", "FUNCAO_CATALOGO_FUNCOES_GERIR")
+						.requestMatchers("/api/auditoria/permissoes", "/api/auditoria/permissoes/**").hasAnyAuthority("ROLE_ADMINISTRADOR", "FUNCAO_AUDITORIA_VER")
+						// GET /api/produtos/importar/modelo segue em anyRequest: qualquer autenticado baixa o CSV.
 						.anyRequest().authenticated());
 
 		return http.build();
