@@ -70,8 +70,18 @@ public class PedidoService {
 		this.autorizacao = autorizacao;
 	}
 
-	public List<PedidoDTO.Response> listar() {
+	public List<PedidoDTO.Response> listar(boolean casa) {
 		autorizacao.exigir(AuthorityFuncao.PEDIDO_LER);
+		if (casa) {
+			if (!autorizacao.tem(AuthorityFuncao.COMANDA_FECHAR)
+					&& !autorizacao.tem(AuthorityFuncao.PEDIDO_CANCELAR)
+					&& !autorizacao.tem(AuthorityFuncao.PEDIDO_ESTORNAR)
+					&& !autorizacao.tem(AuthorityFuncao.PEDIDO_EDITAR)) {
+				throw new AccessDeniedException("Acesso negado");
+			}
+			Restaurante restaurante = escopo.restauranteDoContexto();
+			return responder(pedidoRepository.findByRestauranteIdOrderByDataHoraDesc(restaurante.getId()));
+		}
 		if (EscopoVinculo.deUnidade(escopo.usuario().getPerfil())) {
 			Restaurante restaurante = escopo.restauranteDoContexto();
 			return responder(pedidoRepository.findByRestauranteIdOrderByDataHoraDesc(restaurante.getId()));

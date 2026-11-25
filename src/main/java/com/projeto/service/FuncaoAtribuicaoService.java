@@ -74,6 +74,11 @@ public class FuncaoAtribuicaoService {
 	}
 
 	@Transactional(readOnly = true)
+	public List<String> meusCargos() {
+		return consulta.nomesDeCargo(escopo.usuario().getId());
+	}
+
+	@Transactional(readOnly = true)
 	public List<FuncaoDTO.Linha> listarDoAlvo(Long alvoId) {
 		autorizacao.exigir(AuthorityFuncao.EQUIPE_FUNCAO_ATRIBUIR);
 		Usuario chamador = carregar(escopo.usuario().getId());
@@ -223,6 +228,9 @@ public class FuncaoAtribuicaoService {
 	}
 
 	private void conceder(Usuario chamador, Usuario alvo, Long restauranteId, AuthorityFuncao authority) {
+		if (!com.projeto.catalogo.RecorteCargo.funcaoPermitida(alvo.getPerfil(), authority)) {
+			throw new RegraDeNegocioException("Essa função não cabe neste perfil");
+		}
 		barrar(chamador, authority);
 		autorizacao.exigirPodeConceder(chamador, authority);
 		if (restauranteId == null) {

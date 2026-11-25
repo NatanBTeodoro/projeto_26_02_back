@@ -32,6 +32,11 @@ public class FuncaoController {
 		return funcoes.minhas();
 	}
 
+	@GetMapping("/api/funcoes/meus-cargos")
+	public List<String> meusCargos() {
+		return funcoes.meusCargos();
+	}
+
 	@GetMapping("/api/usuarios/{id}/funcoes")
 	public List<FuncaoDTO.Linha> doUsuario(@PathVariable Long id) {
 		return funcoes.listarDoAlvo(id);

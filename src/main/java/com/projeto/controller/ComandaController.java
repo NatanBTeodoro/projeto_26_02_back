@@ -24,8 +24,10 @@ public class ComandaController {
 	}
 
 	@GetMapping
-	public List<ComandaDTO.Response> listar(@RequestParam(required = false) Long usuarioId) {
-		return comandaService.listar(usuarioId);
+	public List<ComandaDTO.Response> listar(
+			@RequestParam(required = false) Long usuarioId,
+			@RequestParam(defaultValue = "false") boolean abertas) {
+		return comandaService.listar(usuarioId, abertas);
 	}
 
 	@PostMapping

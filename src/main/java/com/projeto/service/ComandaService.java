@@ -57,8 +57,13 @@ public class ComandaService {
 		this.autorizacao = autorizacao;
 	}
 
-	public List<ComandaDTO.Response> listar(Long usuarioId) {
+	public List<ComandaDTO.Response> listar(Long usuarioId, boolean abertas) {
 		autorizacao.exigir(AuthorityFuncao.COMANDA_LER);
+		if (abertas) {
+			autorizacao.exigir(AuthorityFuncao.COMANDA_FECHAR);
+			Restaurante restaurante = escopo.restauranteDoContexto();
+			return responder(comandaRepository.findByRestauranteIdAndAbertaTrue(restaurante.getId()));
+		}
 		if (!EscopoVinculo.deUnidade(escopo.usuario().getPerfil())) {
 			Usuario atual = escopo.usuario();
 			return responder(comandaRepository.findByUsuarioIdOrderByIdDesc(atual.getId()));

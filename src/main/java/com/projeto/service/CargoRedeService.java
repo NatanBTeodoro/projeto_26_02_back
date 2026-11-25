@@ -209,6 +209,9 @@ public class CargoRedeService {
 	@Transactional
 	public void conceder(Usuario chamador, Usuario alvo, Long restauranteId, Long cargoId) {
 		CargoRede cargo = carregarCargo(cargoId);
+		if (!com.projeto.catalogo.RecorteCargo.cargoPermitido(alvo.getPerfil(), cargo.getNome())) {
+			throw new RegraDeNegocioException("Esse cargo não cabe neste perfil");
+		}
 		exigirCargoDaRede(chamador, cargo);
 		Set<AuthorityFuncao> authorities = authorities(cargo.getId());
 		if (!podeAtribuir(chamador, authorities)) {
