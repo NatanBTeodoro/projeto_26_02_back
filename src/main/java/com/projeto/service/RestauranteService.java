@@ -2,7 +2,6 @@ package com.projeto.service;
 
 import java.util.List;
 
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -13,7 +12,6 @@ import com.projeto.entity.Pedido;
 import com.projeto.entity.Produto;
 import com.projeto.entity.Restaurante;
 import com.projeto.entity.Usuario;
-import com.projeto.entity.enums.Perfil;
 import com.projeto.entity.enums.StatusRestaurante;
 import com.projeto.repository.CategoriaRepository;
 import com.projeto.repository.ComandaRepository;
@@ -55,7 +53,7 @@ public class RestauranteService {
 	}
 
 	public List<RestauranteDTO.Response> listar() {
-		Usuario admin = exigirAdmin();
+		Usuario admin = EscopoOperacao.administrador(escopo.usuario());
 		return restauranteRepository.findByAdminIdOrderByNomeAsc(admin.getId()).stream()
 				.map(RestauranteDTO.Response::de)
 				.toList();
@@ -63,7 +61,7 @@ public class RestauranteService {
 
 	@Transactional
 	public RestauranteDTO.Response criar(RestauranteDTO.Create dto) {
-		Usuario admin = exigirAdmin();
+		Usuario admin = EscopoOperacao.administrador(escopo.usuario());
 		Restaurante restaurante = new Restaurante();
 		restaurante.setNome(dto.nome().trim());
 		restaurante.setAdmin(admin);
@@ -189,18 +187,9 @@ public class RestauranteService {
 	}
 
 	private Restaurante carregarDoAdmin(Long id) {
-		Usuario admin = exigirAdmin();
+		Usuario admin = EscopoOperacao.administrador(escopo.usuario());
 		return restauranteRepository.findById(id)
 				.filter(restaurante -> restaurante.getAdmin().getId().equals(admin.getId()))
 				.orElseThrow(() -> new RecursoNaoEncontradoException("Restaurante não encontrado"));
-	}
-
-	private Usuario exigirAdmin() {
-		Usuario atual = escopo.usuario();
-		// vinculo, nao funcao
-		if (atual.getPerfil() != Perfil.ADMINISTRADOR) {
-			throw new AccessDeniedException("Acesso negado");
-		}
-		return atual;
 	}
 }

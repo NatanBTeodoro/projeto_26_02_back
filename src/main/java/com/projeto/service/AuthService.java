@@ -1,6 +1,5 @@
 package com.projeto.service;
 
-import java.util.Locale;
 import java.util.UUID;
 
 import org.springframework.security.authentication.AuthenticationManager;
@@ -19,6 +18,7 @@ import com.projeto.entity.Usuario;
 import com.projeto.repository.UsuarioRepository;
 import com.projeto.seguranca.SessaoAtual;
 import com.projeto.seguranca.UsuarioDetails;
+import com.projeto.util.Emails;
 import com.projeto.util.exception.NaoAutenticadoException;
 import com.projeto.util.exception.RegraDeNegocioException;
 
@@ -43,7 +43,7 @@ public class AuthService {
 
 	@Transactional
 	public UsuarioDTO.Sessao entrar(LoginRequest pedido) {
-		String email = pedido.email().trim().toLowerCase(Locale.ROOT);
+		String email = Emails.normalizar(pedido.email());
 		Authentication autenticado;
 		try {
 			autenticado = authenticationManager.authenticate(

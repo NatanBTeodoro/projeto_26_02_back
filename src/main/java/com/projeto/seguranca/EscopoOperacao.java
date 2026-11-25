@@ -41,6 +41,14 @@ public class EscopoOperacao {
 		this.restauranteRepository = restauranteRepository;
 	}
 
+	public static Usuario administrador(Usuario atual) {
+		// vinculo, nao funcao
+		if (atual.getPerfil() != Perfil.ADMINISTRADOR) {
+			throw new AccessDeniedException("Acesso negado");
+		}
+		return atual;
+	}
+
 	@Transactional(readOnly = true)
 	public Usuario usuario() {
 		Object salvo = request.getAttribute(USUARIO_NA_REQUISICAO);
@@ -97,9 +105,7 @@ public class EscopoOperacao {
 	@Transactional(readOnly = true)
 	public Restaurante carregarDoAdmin(Usuario admin, Long restauranteId) {
 		// vinculo, nao funcao
-		if (admin.getPerfil() != Perfil.ADMINISTRADOR) {
-			throw new AccessDeniedException("Acesso negado");
-		}
+		administrador(admin);
 		Restaurante restaurante = restauranteRepository.findById(restauranteId)
 				.orElseThrow(() -> new RecursoNaoEncontradoException("Restaurante não encontrado"));
 		if (!restaurante.getAdmin().getId().equals(admin.getId())) {

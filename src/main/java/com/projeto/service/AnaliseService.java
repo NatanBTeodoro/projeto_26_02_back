@@ -2,7 +2,6 @@ package com.projeto.service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
@@ -17,7 +16,6 @@ import com.projeto.entity.Pedido;
 import com.projeto.entity.Restaurante;
 import com.projeto.repository.PedidoRepository;
 import com.projeto.seguranca.EscopoOperacao;
-import com.projeto.util.exception.RegraDeNegocioException;
 
 @Service
 @Transactional(readOnly = true)
@@ -36,19 +34,11 @@ public class AnaliseService {
 	}
 
 	public AnaliseDTO.Response consultar(LocalDate de, LocalDate ate) {
-		if (de == null || ate == null) {
-			throw new RegraDeNegocioException("Informe a data inicial e a data final");
-		}
-		if (de.isAfter(ate)) {
-			throw new RegraDeNegocioException("A data inicial precisa ser anterior ou igual à final");
-		}
+		PeriodoConsulta.Intervalo periodo = PeriodoConsulta.exigir(de, ate);
 		Restaurante restaurante = escopo.restauranteDoContexto();
-		Instant inicio = de.atStartOfDay(FUSO).toInstant();
-
-		Instant fim = ate.plusDays(1).atStartOfDay(FUSO).toInstant();
 
 		List<Pedido> pedidos = pedidoRepository.findByRestauranteIdAndDataHoraGreaterThanEqualAndDataHoraLessThan(
-				restaurante.getId(), inicio, fim);
+				restaurante.getId(), periodo.inicio(), periodo.fim());
 
 		List<ClassificadorCardapio.Linha> linhas = LeituraVendas.linhasAtivas(pedidos);
 

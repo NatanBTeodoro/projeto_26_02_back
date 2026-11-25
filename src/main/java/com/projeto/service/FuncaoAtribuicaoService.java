@@ -194,9 +194,7 @@ public class FuncaoAtribuicaoService {
 	@Transactional(readOnly = true)
 	public List<FuncaoDTO.AuditoriaItem> consultarAuditoria(Long alvoId, Long restauranteId, LocalDate de, LocalDate ate) {
 		// vinculo, nao funcao
-		if (escopo.usuario().getPerfil() != Perfil.ADMINISTRADOR) {
-			throw new AccessDeniedException("Acesso negado");
-		}
+		EscopoOperacao.administrador(escopo.usuario());
 		autorizacao.exigir(AuthorityFuncao.AUDITORIA_VER);
 		Instant inicio = de == null ? Instant.EPOCH : de.atStartOfDay().toInstant(ZoneOffset.UTC);
 		Instant fim = (ate == null ? LocalDate.now(ZoneOffset.UTC).plusDays(1) : ate.plusDays(1))
@@ -327,9 +325,7 @@ public class FuncaoAtribuicaoService {
 
 	private Usuario exigirCatalogo() {
 		// vinculo, nao funcao
-		if (escopo.usuario().getPerfil() != Perfil.ADMINISTRADOR) {
-			throw new AccessDeniedException("Acesso negado");
-		}
+		EscopoOperacao.administrador(escopo.usuario());
 		autorizacao.exigir(AuthorityFuncao.CATALOGO_FUNCOES_GERIR);
 		return carregar(escopo.usuario().getId());
 	}

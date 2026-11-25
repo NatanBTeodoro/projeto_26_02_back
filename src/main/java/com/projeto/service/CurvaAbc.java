@@ -9,6 +9,7 @@ import java.util.List;
 public final class CurvaAbc {
 
 	public static final String CODIGO = "CURVA_ABC";
+	public static final String NOME = "Curva ABC (Pareto)";
 
 	private static final BigDecimal CEM = new BigDecimal("100.00");
 	private static final BigDecimal ATE_A = new BigDecimal("80.00");

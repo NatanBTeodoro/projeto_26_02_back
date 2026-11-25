@@ -348,9 +348,7 @@ public class CargoRedeService {
 
 	private Usuario exigirCatalogo() {
 		// vinculo, nao funcao
-		if (escopo.usuario().getPerfil() != Perfil.ADMINISTRADOR) {
-			throw new AccessDeniedException("Acesso negado");
-		}
+		EscopoOperacao.administrador(escopo.usuario());
 		autorizacao.exigir(AuthorityFuncao.CATALOGO_FUNCOES_GERIR);
 		return carregar(escopo.usuario().getId());
 	}

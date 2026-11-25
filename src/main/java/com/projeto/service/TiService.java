@@ -1,7 +1,6 @@
 package com.projeto.service;
 
 import java.util.List;
-import java.util.Locale;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.access.AccessDeniedException;
@@ -17,6 +16,7 @@ import com.projeto.entity.enums.StatusRestaurante;
 import com.projeto.repository.RestauranteRepository;
 import com.projeto.repository.UsuarioRepository;
 import com.projeto.seguranca.EscopoOperacao;
+import com.projeto.util.Emails;
 import com.projeto.util.exception.RecursoNaoEncontradoException;
 import com.projeto.util.exception.RegraDeNegocioException;
 
@@ -62,7 +62,7 @@ public class TiService {
 	@Transactional
 	public TiDTO.Admin criar(TiDTO.Create dto) {
 		exigirTi();
-		String email = normalizar(dto.email());
+		String email = Emails.normalizar(dto.email());
 		if (usuarioRepository.existsByEmailIgnoreCase(email)) {
 			throw new RegraDeNegocioException("E-mail já cadastrado");
 		}
@@ -142,7 +142,7 @@ public class TiService {
 	@Transactional
 	public TiDTO.UsuarioTi criarUsuario(TiDTO.Create dto) {
 		exigirTi();
-		String email = normalizar(dto.email());
+		String email = Emails.normalizar(dto.email());
 		if (usuarioRepository.existsByEmailIgnoreCase(email)) {
 			throw new RegraDeNegocioException("E-mail já cadastrado");
 		}
@@ -219,9 +219,5 @@ public class TiService {
 
 	private String nomeLivre(String digitado) {
 		return NomeDuplicado.reservar(digitado, usuarioRepository.nomesSemRestaurante());
-	}
-
-	private String normalizar(String email) {
-		return email.trim().toLowerCase(Locale.ROOT);
 	}
 }

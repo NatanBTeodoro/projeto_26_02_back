@@ -2,7 +2,6 @@ package com.projeto.service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.EnumMap;
@@ -22,7 +21,6 @@ import com.projeto.entity.enums.ClasseMenu;
 import com.projeto.entity.enums.StatusPedido;
 import com.projeto.repository.PedidoRepository;
 import com.projeto.seguranca.EscopoOperacao;
-import com.projeto.util.exception.RegraDeNegocioException;
 
 @Service
 @Transactional(readOnly = true)
@@ -39,22 +37,15 @@ public class DashboardService {
 	}
 
 	public DashboardDTO.Response consultar(LocalDate de, LocalDate ate) {
-		if (de == null || ate == null) {
-			throw new RegraDeNegocioException("Informe a data inicial e a data final");
-		}
-		if (de.isAfter(ate)) {
-			throw new RegraDeNegocioException("A data inicial precisa ser anterior ou igual à final");
-		}
+		PeriodoConsulta.Intervalo periodo = PeriodoConsulta.exigir(de, ate);
 		Restaurante restaurante = escopo.restauranteDoContexto();
-		Instant inicio = de.atStartOfDay(AnaliseService.FUSO).toInstant();
-		Instant fim = ate.plusDays(1).atStartOfDay(AnaliseService.FUSO).toInstant();
 		boolean financeiro = autorizacao.tem(AuthorityFuncao.ANALISE_VER_FINANCEIRO);
 		boolean operacional = autorizacao.tem(AuthorityFuncao.ANALISE_VER_OPERACIONAL);
 		if (!financeiro && !operacional) {
 			throw new org.springframework.security.access.AccessDeniedException("Acesso negado");
 		}
 		DashboardDTO.Response cheio = montar(de, ate, pedidoRepository.findByRestauranteIdAndDataHoraGreaterThanEqualAndDataHoraLessThan(
-				restaurante.getId(), inicio, fim));
+				restaurante.getId(), periodo.inicio(), periodo.fim()));
 		if (financeiro) {
 			return cheio;
 		}

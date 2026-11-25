@@ -4,14 +4,12 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,7 +18,6 @@ import com.projeto.entity.Pedido;
 import com.projeto.entity.PedidoItem;
 import com.projeto.entity.Restaurante;
 import com.projeto.entity.Usuario;
-import com.projeto.entity.enums.Perfil;
 import com.projeto.entity.enums.StatusPedido;
 import com.projeto.entity.enums.StatusRestaurante;
 import com.projeto.repository.PedidoRepository;
@@ -35,29 +32,24 @@ public class CurvaAbcService {
 	private final PedidoRepository pedidoRepository;
 	private final RestauranteRepository restauranteRepository;
 	private final EscopoOperacao escopo;
-	private final ModelosAnaliticos modelosAnaliticos;
 
 	public CurvaAbcService(
 			PedidoRepository pedidoRepository,
 			RestauranteRepository restauranteRepository,
-			EscopoOperacao escopo,
-			ModelosAnaliticos modelosAnaliticos) {
+			EscopoOperacao escopo) {
 		this.pedidoRepository = pedidoRepository;
 		this.restauranteRepository = restauranteRepository;
 		this.escopo = escopo;
-		this.modelosAnaliticos = modelosAnaliticos;
 	}
 
 	public List<CurvaAbcDTO.Modelo> modelos() {
-		exigirAdmin();
-		return modelosAnaliticos.listar().stream()
-				.map(modelo -> new CurvaAbcDTO.Modelo(modelo.codigo(), modelo.nome()))
-				.toList();
+		EscopoOperacao.administrador(escopo.usuario());
+		return List.of(new CurvaAbcDTO.Modelo(CurvaAbc.CODIGO, CurvaAbc.NOME));
 	}
 
 	public CurvaAbcDTO.Response porRestaurante(LocalDate de, LocalDate ate) {
-		Usuario admin = exigirAdmin();
-		Periodo periodo = periodo(de, ate);
+		Usuario admin = EscopoOperacao.administrador(escopo.usuario());
+		PeriodoConsulta.Intervalo periodo = PeriodoConsulta.exigir(de, ate);
 		List<Restaurante> ativos = restauranteRepository.findByAdminIdAndStatusOrderByNomeAsc(
 				admin.getId(), StatusRestaurante.ATIVO);
 		List<Long> ids = ativos.stream().map(Restaurante::getId).toList();
@@ -74,12 +66,12 @@ public class CurvaAbcService {
 	}
 
 	public CurvaAbcDTO.Response porProduto(LocalDate de, LocalDate ate, Long restauranteId) {
-		Usuario admin = exigirAdmin();
+		Usuario admin = EscopoOperacao.administrador(escopo.usuario());
 		if (restauranteId == null) {
 			throw new RegraDeNegocioException("Escolha o restaurante");
 		}
 		Restaurante restaurante = escopo.carregarDoAdmin(admin, restauranteId);
-		Periodo periodo = periodo(de, ate);
+		PeriodoConsulta.Intervalo periodo = PeriodoConsulta.exigir(de, ate);
 		List<Pedido> pedidos = pedidoRepository.findByRestauranteIdAndDataHoraGreaterThanEqualAndDataHoraLessThan(
 				restaurante.getId(), periodo.inicio(), periodo.fim());
 		Map<Long, Acumulo> porProduto = new LinkedHashMap<>();
@@ -91,20 +83,18 @@ public class CurvaAbcService {
 			Long restauranteId,
 			LocalDate de,
 			LocalDate ate,
-			Periodo periodo,
+			PeriodoConsulta.Intervalo periodo,
 			List<Pedido> pedidos,
 			Map<Long, Acumulo> porProduto) {
-		long dias = ChronoUnit.DAYS.between(de, ate) + 1;
-		LocalDate fimAnterior = de.minusDays(1);
-		LocalDate inicioAnterior = fimAnterior.minusDays(dias - 1);
+		PeriodoConsulta.Intervalo anterior = PeriodoConsulta.anterior(de, ate);
 		Instant primeira = pedidoRepository.primeiraVendaAtiva(List.of(restauranteId));
 		boolean semPeriodoAnterior = primeira == null || !primeira.isBefore(periodo.inicio());
 		Map<Long, BigDecimal> lucroAntes = new HashMap<>();
 		if (!semPeriodoAnterior) {
 			List<Pedido> anteriores = pedidoRepository.findByRestauranteIdAndDataHoraGreaterThanEqualAndDataHoraLessThan(
 					restauranteId,
-					inicioAnterior.atStartOfDay(AnaliseService.FUSO).toInstant(),
-					periodo.inicio());
+					anterior.inicio(),
+					anterior.fim());
 			Map<Long, Acumulo> grupos = new LinkedHashMap<>();
 			acumular(anteriores, grupos, item -> item.getProduto().getId(), true);
 			for (Map.Entry<Long, Acumulo> entrada : grupos.entrySet()) {
@@ -272,30 +262,6 @@ public class CurvaAbcService {
 			}
 		}
 		return semCusto;
-	}
-
-	private Usuario exigirAdmin() {
-		Usuario atual = escopo.usuario();
-		// vinculo, nao funcao
-		if (atual.getPerfil() != Perfil.ADMINISTRADOR) {
-			throw new AccessDeniedException("Acesso negado");
-		}
-		return atual;
-	}
-
-	private Periodo periodo(LocalDate de, LocalDate ate) {
-		if (de == null || ate == null) {
-			throw new RegraDeNegocioException("Informe a data inicial e a data final");
-		}
-		if (de.isAfter(ate)) {
-			throw new RegraDeNegocioException("A data inicial precisa ser anterior ou igual à final");
-		}
-		Instant inicio = de.atStartOfDay(AnaliseService.FUSO).toInstant();
-		Instant fim = ate.plusDays(1).atStartOfDay(AnaliseService.FUSO).toInstant();
-		return new Periodo(inicio, fim);
-	}
-
-	private record Periodo(Instant inicio, Instant fim) {
 	}
 
 	record VariacaoLucro(BigDecimal percentual, String texto) {

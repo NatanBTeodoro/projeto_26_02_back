@@ -1,7 +1,6 @@
 package com.projeto.service;
 
 import java.util.List;
-import java.util.Locale;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.access.AccessDeniedException;
@@ -21,6 +20,7 @@ import com.projeto.repository.PedidoRepository;
 import com.projeto.repository.RestauranteRepository;
 import com.projeto.repository.UsuarioRepository;
 import com.projeto.seguranca.EscopoOperacao;
+import com.projeto.util.Emails;
 import com.projeto.util.exception.RecursoNaoEncontradoException;
 import com.projeto.util.exception.RegraDeNegocioException;
 
@@ -74,9 +74,7 @@ public class UsuarioService {
 					atual.getRestaurante().getId(), Perfil.USUARIO));
 		}
 		// vinculo, nao funcao
-		if (atual.getPerfil() != Perfil.ADMINISTRADOR) {
-			throw new AccessDeniedException("Acesso negado");
-		}
+		EscopoOperacao.administrador(atual);
 		if (restauranteId != null) {
 			Restaurante restaurante = escopo.carregarDoAdmin(atual, restauranteId);
 			return mapear(usuarioRepository.findByRestauranteIdOrderByNomeAsc(restaurante.getId()));
@@ -91,7 +89,7 @@ public class UsuarioService {
 	@Transactional
 	public UsuarioDTO.Response criar(UsuarioDTO.Create dto) {
 		Usuario atual = escopo.usuario();
-		String email = normalizar(dto.email());
+		String email = Emails.normalizar(dto.email());
 		if (usuarioRepository.existsByEmailIgnoreCase(email)) {
 			throw new RegraDeNegocioException("E-mail já cadastrado");
 		}
@@ -138,7 +136,7 @@ public class UsuarioService {
 			usuario.setNome(nomeLivre(dto.nome().trim(), restauranteId, usuario.getNome()));
 		}
 		if (dto.email() != null && !dto.email().isBlank()) {
-			String email = normalizar(dto.email());
+			String email = Emails.normalizar(dto.email());
 			usuarioRepository.findByEmailIgnoreCase(email)
 					.filter(outro -> !outro.getId().equals(usuario.getId()))
 					.ifPresent(outro -> {
@@ -297,9 +295,5 @@ public class UsuarioService {
 			nomes = nomes.stream().filter(nome -> !nome.equalsIgnoreCase(nomeAtual)).toList();
 		}
 		return NomeDuplicado.reservar(digitado, nomes);
-	}
-
-	private String normalizar(String email) {
-		return email.trim().toLowerCase(Locale.ROOT);
 	}
 }
