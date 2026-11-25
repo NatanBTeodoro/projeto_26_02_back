@@ -25,9 +25,6 @@ public class UsuarioDetails implements UserDetails {
 		this(usuario, List.of());
 	}
 
-	/**
-	 * O prefixo da função é {@code FUNCAO_}. O cargo continua {@code ROLE_<perfil>}.
-	 */
 	public UsuarioDetails(Usuario usuario, Collection<AuthorityFuncao> funcoes) {
 		this.id = usuario.getId();
 		this.email = usuario.getEmail();

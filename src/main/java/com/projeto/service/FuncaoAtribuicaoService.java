@@ -193,7 +193,6 @@ public class FuncaoAtribuicaoService {
 
 	@Transactional(readOnly = true)
 	public List<FuncaoDTO.AuditoriaItem> consultarAuditoria(Long alvoId, Long restauranteId, LocalDate de, LocalDate ate) {
-		// vinculo, nao funcao
 		EscopoOperacao.administrador(escopo.usuario());
 		autorizacao.exigir(AuthorityFuncao.AUDITORIA_VER);
 		Instant inicio = de == null ? Instant.EPOCH : de.atStartOfDay().toInstant(ZoneOffset.UTC);
@@ -291,7 +290,6 @@ public class FuncaoAtribuicaoService {
 
 	private void barrar(Usuario chamador, AuthorityFuncao authority) {
 		barrarPlataforma(authority);
-		// vinculo, nao funcao
 		if (chamador.getPerfil() == Perfil.GESTOR && BLOQUEADAS_PARA_GESTOR.contains(authority)) {
 			throw new AccessDeniedException("Acesso negado");
 		}
@@ -304,7 +302,6 @@ public class FuncaoAtribuicaoService {
 	}
 
 	private void exigirMesmoRecorte(Usuario chamador, Usuario alvo, Long restauranteId) {
-		// vinculo, nao funcao
 		if (chamador.getPerfil() == Perfil.GESTOR) {
 			Long meu = restauranteDo(chamador);
 			if (meu == null || restauranteId == null || !meu.equals(restauranteId)) {
@@ -324,7 +321,6 @@ public class FuncaoAtribuicaoService {
 	}
 
 	private Usuario exigirCatalogo() {
-		// vinculo, nao funcao
 		EscopoOperacao.administrador(escopo.usuario());
 		autorizacao.exigir(AuthorityFuncao.CATALOGO_FUNCOES_GERIR);
 		return carregar(escopo.usuario().getId());

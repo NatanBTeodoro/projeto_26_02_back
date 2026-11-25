@@ -213,7 +213,6 @@ public class TiService {
 	}
 
 	private void exigirTi() {
-		// vinculo, nao funcao
 		if (escopo.usuario().getPerfil() != Perfil.TI) {
 			throw new AccessDeniedException("Acesso negado");
 		}

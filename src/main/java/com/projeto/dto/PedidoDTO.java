@@ -93,6 +93,7 @@ public final class PedidoDTO {
 			Integer comandaNumero,
 			Integer mesa,
 			String nomeCliente,
+			String rotulo,
 			Long usuarioId,
 			String usuarioNome,
 			String lancadoPor,
@@ -100,7 +101,7 @@ public final class PedidoDTO {
 			List<ItemResponse> itens,
 			List<AlteracaoResponse> alteracoes) {
 
-		public static Response de(Pedido pedido) {
+		public static Response de(Pedido pedido, String rotulo) {
 			String nome = pedido.getUsuario() != null && pedido.getUsuario().getNome() != null
 					? pedido.getUsuario().getNome()
 					: pedido.getUsuarioNome();
@@ -125,6 +126,7 @@ public final class PedidoDTO {
 					comandaNumero,
 					pedido.getMesa(),
 					pedido.getNomeCliente(),
+					rotulo,
 					usuarioId,
 					nome,
 					pedido.getLancadoPor(),

@@ -68,7 +68,6 @@ public class UsuarioService {
 	public List<UsuarioDTO.Response> listar(Long restauranteId) {
 		autorizacao.exigir(AuthorityFuncao.EQUIPE_LER);
 		Usuario atual = escopo.usuario();
-		// vinculo, nao funcao
 		if (atual.getPerfil() == Perfil.GESTOR) {
 			if (atual.getRestaurante() == null) {
 				throw new RegraDeNegocioException("Usuário sem restaurante");
@@ -76,7 +75,6 @@ public class UsuarioService {
 			return mapear(usuarioRepository.findByRestauranteIdAndPerfilOrderByNomeAsc(
 					atual.getRestaurante().getId(), Perfil.USUARIO));
 		}
-		// vinculo, nao funcao
 		EscopoOperacao.administrador(atual);
 		if (restauranteId != null) {
 			Restaurante restaurante = escopo.carregarDoAdmin(atual, restauranteId);
@@ -195,7 +193,6 @@ public class UsuarioService {
 		if (alvo.getId().equals(atual.getId())) {
 			throw new RegraDeNegocioException("Use a troca de senha do perfil, com a senha atual");
 		}
-		// vinculo, nao funcao
 		if (atual.getPerfil() == Perfil.ADMINISTRADOR) {
 			if (alvo.getPerfil() != Perfil.GESTOR && alvo.getPerfil() != Perfil.USUARIO) {
 				throw new AccessDeniedException("Acesso negado");
@@ -220,14 +217,12 @@ public class UsuarioService {
 	}
 
 	private Restaurante restauranteDoCadastro(Usuario atual, UsuarioDTO.Create dto) {
-		// vinculo, nao funcao
 		if (atual.getPerfil() == Perfil.GESTOR) {
 			if (atual.getRestaurante() == null) {
 				throw new RegraDeNegocioException("Usuário sem restaurante");
 			}
 			return atual.getRestaurante();
 		}
-		// vinculo, nao funcao
 		if (atual.getPerfil() == Perfil.ADMINISTRADOR) {
 			if (escopo.restauranteInformado().isPresent()) {
 				return escopo.restauranteDoContexto();
@@ -265,7 +260,6 @@ public class UsuarioService {
 		} else {
 			throw new AccessDeniedException("Acesso negado");
 		}
-		// vinculo, nao funcao
 		if (atual.getPerfil() == Perfil.GESTOR) {
 			if (usuario.getPerfil() != Perfil.USUARIO
 					|| atual.getRestaurante() == null

@@ -3,10 +3,6 @@ package com.projeto.catalogo;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
-/**
- * Espelha a migration SQL da Fase 5A. O teste cobre o resultado por conta;
- * o schema.sql aplica o mesmo mapa nas tabelas.
- */
 public final class ReducaoCatalogo {
 
 	private ReducaoCatalogo() {

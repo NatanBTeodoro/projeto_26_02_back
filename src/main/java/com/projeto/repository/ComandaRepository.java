@@ -17,6 +17,8 @@ public interface ComandaRepository extends JpaRepository<Comanda, Long> {
 
 	List<Comanda> findByRestauranteIdAndUsuarioIdOrderByIdDesc(Long restauranteId, Long usuarioId);
 
+	List<Comanda> findByRestauranteIdAndAbertaTrue(Long restauranteId);
+
 	@Query("select coalesce(max(c.numero), 0) from Comanda c where c.restaurante.id = :restauranteId")
 	int maiorNumero(@Param("restauranteId") Long restauranteId);
 

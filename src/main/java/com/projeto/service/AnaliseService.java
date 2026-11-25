@@ -43,11 +43,9 @@ public class AnaliseService {
 		List<ClassificadorCardapio.Linha> linhas = LeituraVendas.linhasAtivas(pedidos);
 
 		long quantidadePedidos = LeituraVendas.contarPedidosAtivos(pedidos);
-		
 		LeituraVendas.Resumo resumo = LeituraVendas.resumir(linhas);
 		java.util.Map<Long, BigDecimal> custos = LeituraVendas.custoPorProduto(linhas);
 		BigDecimal receita = resumo.faturamentoTotal();
-		
 		BigDecimal ticket = quantidadePedidos == 0
 				? BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP)
 				: receita.divide(BigDecimal.valueOf(quantidadePedidos), 2, RoundingMode.HALF_UP);

@@ -11,7 +11,6 @@ public final class TrocaPerfil {
 	}
 
 	public static void validar(Perfil autor, Long autorId, Long alvoId, Perfil perfilAlvo, Perfil novo) {
-		// vinculo, nao funcao: só o administrador troca perfil. Gestor e TI ficam de fora.
 		if (autor != Perfil.ADMINISTRADOR) {
 			throw new AccessDeniedException("Acesso negado");
 		}

@@ -53,7 +53,6 @@ public class ReclamacaoService {
 		autorizacao.exigir(com.projeto.entity.enums.AuthorityFuncao.RECLAMACAO_LER);
 		Usuario atual = escopo.usuario();
 		Perfil perfil = atual.getPerfil();
-		// vinculo, nao funcao: a caixa depende do destino, não da authority.
 		if (perfil != Perfil.TI && perfil != Perfil.ADMINISTRADOR && perfil != Perfil.GESTOR) {
 			throw new AccessDeniedException("Acesso negado");
 		}
@@ -61,7 +60,6 @@ public class ReclamacaoService {
 		if (caixa != null && !caixa.isBlank() && !recebidas && !"enviadas".equals(caixa)) {
 			throw new RegraDeNegocioException("Caixa inválida");
 		}
-		// vinculo, nao funcao
 		if (recebidas && perfil != Perfil.ADMINISTRADOR) {
 			throw new AccessDeniedException("Acesso negado");
 		}
@@ -92,7 +90,6 @@ public class ReclamacaoService {
 	public ReclamacaoDTO.Item criar(String assunto, String descricao, List<MultipartFile> arquivos) {
 		autorizacao.exigir(com.projeto.entity.enums.AuthorityFuncao.RECLAMACAO_ABRIR);
 		Usuario atual = escopo.usuario();
-		// vinculo, nao funcao: gestor usa assunto fechado; admin escreve o assunto.
 		if (atual.getPerfil() != Perfil.ADMINISTRADOR && atual.getPerfil() != Perfil.GESTOR) {
 			throw new AccessDeniedException("Acesso negado");
 		}
@@ -104,7 +101,6 @@ public class ReclamacaoService {
 		reclamacao.setCriadoEm(Instant.now());
 		reclamacao.setDescricao(texto);
 		reclamacao.setStatus(StatusReclamacao.ABERTA);
-		// vinculo, nao funcao
 		if (atual.getPerfil() == Perfil.GESTOR) {
 			AssuntoGestor escolhido = AssuntoGestor.exigir(assunto);
 			reclamacao.setAssunto(escolhido.rotulo());
@@ -198,7 +194,6 @@ public class ReclamacaoService {
 	private Reclamacao carregarVisivel(Long id) {
 		Usuario atual = escopo.usuario();
 		Reclamacao reclamacao = carregar(id);
-		// vinculo, nao funcao
 		if (atual.getPerfil() == Perfil.TI && reclamacao.getDestino() == DestinoReclamacao.TI) {
 			return reclamacao;
 		}
@@ -212,7 +207,6 @@ public class ReclamacaoService {
 	}
 
 	private boolean podeResponder(Usuario atual, Reclamacao reclamacao) {
-		// vinculo, nao funcao: o destino da reclamação decide quem responde.
 		if (atual.getPerfil() == Perfil.TI) {
 			return reclamacao.getDestino() == DestinoReclamacao.TI;
 		}

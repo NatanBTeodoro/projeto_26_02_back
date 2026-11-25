@@ -20,10 +20,11 @@ public final class ComandaDTO {
 			String usuarioNome,
 			Integer mesa,
 			String nomeCliente,
+			String rotulo,
 			Instant criadaEm,
 			boolean aberta) {
 
-		public static Response de(Comanda comanda) {
+		public static Response de(Comanda comanda, String rotulo) {
 			Long usuarioId = comanda.getUsuario() == null ? null : comanda.getUsuario().getId();
 			String usuarioNome = comanda.getUsuario() == null ? null : comanda.getUsuario().getNome();
 			return new Response(
@@ -34,6 +35,7 @@ public final class ComandaDTO {
 					usuarioNome,
 					comanda.getMesa(),
 					comanda.getNomeCliente(),
+					rotulo,
 					comanda.getCriadaEm(),
 					comanda.isAberta());
 		}

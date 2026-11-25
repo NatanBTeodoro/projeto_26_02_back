@@ -220,7 +220,6 @@ CREATE TABLE IF NOT EXISTS auditoria_permissao (
 
 CREATE INDEX IF NOT EXISTS idx_auditoria_permissao_alvo ON auditoria_permissao (alvo_id, data_hora);
 
--- Fase 5A: consolida o par próprio/unidade e renomeia o estorno de pedido ativo.
 DELETE FROM usuario_restaurante_funcao a
 USING usuario_restaurante_funcao b
 WHERE a.usuario_id = b.usuario_id

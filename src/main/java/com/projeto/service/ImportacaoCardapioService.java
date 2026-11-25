@@ -47,7 +47,6 @@ public class ImportacaoCardapioService {
 	}
 
 	public byte[] modelo() {
-		// TODO(migracao): o modelo CSV continua sem CARDAPIO_LER para qualquer autenticado, como na fase 0.
 		return LeitorPlanilhaCardapio.modeloCsv();
 	}
 

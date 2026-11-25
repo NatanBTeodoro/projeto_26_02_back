@@ -31,10 +31,6 @@ public class AuditoriaFinanceiraService {
 		this.self = self;
 	}
 
-	/**
-	 * Grava um registro por operação. Falha aqui não propaga: a venda já decidida
-	 * não volta atrás por causa do log. A gravação corre em transação nova.
-	 */
 	public void registrar(
 			Long restauranteId,
 			Usuario usuario,
@@ -47,7 +43,6 @@ public class AuditoriaFinanceiraService {
 			AuditoriaFinanceiraService alvo = self == null ? this : self;
 			alvo.gravar(restauranteId, usuario, operacao, recursoId, valorAntes, valorDepois, detalhe);
 		} catch (RuntimeException ex) {
-			// best-effort nesta fase
 		}
 	}
 

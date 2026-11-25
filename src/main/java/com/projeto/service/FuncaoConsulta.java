@@ -30,10 +30,6 @@ public class FuncaoConsulta {
 		this.usuarios = usuarios;
 	}
 
-	/**
-	 * Relê o banco a cada chamada. Não há cache: conceder ou revogar uma função
-	 * vale na próxima requisição, sem trocar o token.
-	 */
 	@Transactional(readOnly = true)
 	public List<AuthorityFuncao> doUsuario(Long usuarioId) {
 		Set<AuthorityFuncao> funcoes = new LinkedHashSet<>();

@@ -91,7 +91,6 @@ public class SecurityConfig {
 						.requestMatchers("/api/curva-abc/**").hasRole("ADMINISTRADOR")
 						.requestMatchers("/api/painel-admin/**").hasRole("ADMINISTRADOR")
 						.requestMatchers("/api/usuarios", "/api/usuarios/**").hasAnyRole("ADMINISTRADOR", "GESTOR")
-						// Dupla trava: a authority entra no filtro e de novo no serviço.
 						.requestMatchers(HttpMethod.POST, "/api/comandas/*/fechar").hasAnyAuthority("FUNCAO_COMANDA_FECHAR")
 						.requestMatchers(HttpMethod.POST, "/api/pedidos/*/estorno").hasAnyAuthority("FUNCAO_PEDIDO_ESTORNAR", "FUNCAO_PEDIDO_ESTORNAR_PAGO")
 						.requestMatchers(HttpMethod.POST, "/api/pedidos/*/cancelamento").hasAnyAuthority("FUNCAO_PEDIDO_CANCELAR")
@@ -105,7 +104,6 @@ public class SecurityConfig {
 						.requestMatchers("/api/admin/funcoes", "/api/admin/funcoes/**").hasAnyAuthority("ROLE_ADMINISTRADOR", "FUNCAO_CATALOGO_FUNCOES_GERIR")
 						.requestMatchers("/api/admin/cargos", "/api/admin/cargos/**").hasAnyAuthority("ROLE_ADMINISTRADOR", "FUNCAO_CATALOGO_FUNCOES_GERIR")
 						.requestMatchers("/api/auditoria/permissoes", "/api/auditoria/permissoes/**").hasAnyAuthority("ROLE_ADMINISTRADOR", "FUNCAO_AUDITORIA_VER")
-						// GET /api/produtos/importar/modelo segue em anyRequest: qualquer autenticado baixa o CSV.
 						.anyRequest().authenticated());
 
 		return http.build();

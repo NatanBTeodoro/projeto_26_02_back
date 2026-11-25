@@ -3,9 +3,11 @@ package com.projeto.service;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.Objects;
 
 import org.springframework.security.access.AccessDeniedException;
@@ -72,14 +74,10 @@ public class PedidoService {
 		autorizacao.exigir(AuthorityFuncao.PEDIDO_LER);
 		if (EscopoVinculo.deUnidade(escopo.usuario().getPerfil())) {
 			Restaurante restaurante = escopo.restauranteDoContexto();
-			return pedidoRepository.findByRestauranteIdOrderByDataHoraDesc(restaurante.getId()).stream()
-					.map(PedidoDTO.Response::de)
-					.toList();
+			return responder(pedidoRepository.findByRestauranteIdOrderByDataHoraDesc(restaurante.getId()));
 		}
 		Usuario atual = escopo.usuario();
-		return pedidoRepository.findByUsuarioIdOrderByDataHoraDesc(atual.getId()).stream()
-				.map(PedidoDTO.Response::de)
-				.toList();
+		return responder(pedidoRepository.findByUsuarioIdOrderByDataHoraDesc(atual.getId()));
 	}
 
 	@Transactional
@@ -103,7 +101,7 @@ public class PedidoService {
 		pedido.setNomeCliente(dto.nomeCliente().trim());
 		comandaService.lembrarCliente(comanda, pedido.getMesa(), pedido.getNomeCliente());
 		preencherItens(pedido, agrupar(dto.itens()), Map.of(), restaurante);
-		return PedidoDTO.Response.de(pedidoRepository.save(pedido));
+		return responder(pedidoRepository.save(pedido));
 	}
 
 	@Transactional
@@ -136,7 +134,7 @@ public class PedidoService {
 						"status", StatusPedido.ESTORNADO.name(),
 						"valor", AuditoriaFinanceiraService.valor(salvo))),
 				dto.motivo().trim());
-		return PedidoDTO.Response.de(salvo);
+		return responder(salvo);
 	}
 
 	@Transactional
@@ -161,7 +159,7 @@ public class PedidoService {
 						"status", StatusPedido.CANCELADO.name(),
 						"valor", AuditoriaFinanceiraService.valor(salvo))),
 				dto.motivo().trim());
-		return PedidoDTO.Response.de(salvo);
+		return responder(salvo);
 	}
 
 	@Transactional
@@ -187,7 +185,7 @@ public class PedidoService {
 		alteracao.setMotivo(dto.motivo().trim());
 		alteracao.setAutor(escopo.autor());
 		pedido.getAlteracoes().add(alteracao);
-		return PedidoDTO.Response.de(pedidoRepository.save(pedido));
+		return responder(pedidoRepository.save(pedido));
 	}
 
 	static Map<Long, Integer> agrupar(List<PedidoDTO.ItemCreate> itens) {
@@ -244,8 +242,6 @@ public class PedidoService {
 		}
 		Usuario usuario = usuarioRepository.findById(usuarioId)
 				.orElseThrow(() -> new RecursoNaoEncontradoException("Usuário não encontrado"));
-		// vinculo, nao funcao: o dono do pedido é uma conta de salão da casa
-		// vinculo, nao funcao: o alvo do pedido tem de ser conta USUARIO do restaurante.
 		if (usuario.getPerfil() != Perfil.USUARIO
 				|| !usuario.isAtivo()
 				|| usuario.getRestaurante() == null
@@ -292,6 +288,25 @@ public class PedidoService {
 			throw new RegraDeNegocioException("Pedido já encerrado");
 		}
 		return pedido;
+	}
+
+	private List<PedidoDTO.Response> responder(List<Pedido> pedidos) {
+		Map<Long, Set<String>> colisao = new HashMap<>();
+		List<PedidoDTO.Response> saida = new ArrayList<>();
+		for (Pedido pedido : pedidos) {
+			saida.add(responder(pedido, colisao));
+		}
+		return saida;
+	}
+
+	private PedidoDTO.Response responder(Pedido pedido) {
+		return responder(pedido, new HashMap<>());
+	}
+
+	private PedidoDTO.Response responder(Pedido pedido, Map<Long, Set<String>> colisao) {
+		Long restauranteId = restauranteId(pedido);
+		Set<String> nomes = colisao.computeIfAbsent(restauranteId, comandaService::nomesEmMaisDeUmaMesa);
+		return PedidoDTO.Response.de(pedido, comandaService.rotulo(pedido.getNomeCliente(), pedido.getMesa(), nomes));
 	}
 
 	private Long restauranteId(Pedido pedido) {

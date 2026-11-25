@@ -5,6 +5,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
@@ -13,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.projeto.dto.ComandaDTO;
 import com.projeto.regra.EscopoVinculo;
 import com.projeto.regra.FechamentoComanda;
+import com.projeto.regra.RegrasComanda;
 import com.projeto.entity.Comanda;
 import com.projeto.entity.Pedido;
 import com.projeto.entity.Restaurante;
@@ -59,19 +61,14 @@ public class ComandaService {
 		autorizacao.exigir(AuthorityFuncao.COMANDA_LER);
 		if (!EscopoVinculo.deUnidade(escopo.usuario().getPerfil())) {
 			Usuario atual = escopo.usuario();
-			return comandaRepository.findByUsuarioIdOrderByIdDesc(atual.getId()).stream()
-					.map(ComandaDTO.Response::de)
-					.toList();
+			return responder(comandaRepository.findByUsuarioIdOrderByIdDesc(atual.getId()));
 		}
 		Restaurante restaurante = escopo.restauranteDoContexto();
 		if (usuarioId == null) {
 			throw new RegraDeNegocioException("Informe o usuário");
 		}
 		Usuario alvo = usuarioDoRestaurante(restaurante, usuarioId);
-		return comandaRepository.findByRestauranteIdAndUsuarioIdOrderByIdDesc(restaurante.getId(), alvo.getId())
-				.stream()
-				.map(ComandaDTO.Response::de)
-				.toList();
+		return responder(comandaRepository.findByRestauranteIdAndUsuarioIdOrderByIdDesc(restaurante.getId(), alvo.getId()));
 	}
 
 	@Transactional
@@ -89,7 +86,7 @@ public class ComandaService {
 			dono = atual;
 		}
 		Comanda comanda = nova(restaurante, dono);
-		return ComandaDTO.Response.de(comanda);
+		return responder(comanda);
 	}
 
 	@Transactional
@@ -141,21 +138,58 @@ public class ComandaService {
 				auditoria.json(Map.of("aberta", true, "pedidos", reconhecidos)),
 				auditoria.json(Map.of("aberta", false, "valorReconhecido", total, "pedidos", reconhecidos)),
 				"pedidosPagos=" + reconhecidos.size());
-		return ComandaDTO.Response.de(salva);
+		return responder(salva);
 	}
 
 	@Transactional
 	public void lembrarCliente(Comanda comanda, Integer mesa, String nomeCliente) {
+		RegrasComanda.exigirMesmaMesa(comanda.getMesa(), mesa);
+		String nome = nomeCliente == null ? null : nomeCliente.trim();
+		String anterior = comanda.getNomeCliente();
+		boolean trocouNome = anterior != null && !anterior.isBlank() && nome != null && !anterior.equals(nome);
 		comanda.setMesa(mesa);
-		comanda.setNomeCliente(nomeCliente);
+		comanda.setNomeCliente(nome);
 		comandaRepository.save(comanda);
+		if (!trocouNome) {
+			return;
+		}
+		for (Pedido pedido : pedidoRepository.findByComandaId(comanda.getId())) {
+			pedido.setNomeCliente(nome);
+			pedido.setMesa(mesa);
+		}
+	}
+
+	public Set<String> nomesEmMaisDeUmaMesa(Long restauranteId) {
+		if (restauranteId == null) {
+			return Set.of();
+		}
+		return RegrasComanda.nomesEmMaisDeUmaMesa(comandaRepository.findByRestauranteIdAndAbertaTrue(restauranteId).stream()
+				.map(comanda -> new RegrasComanda.Ocupacao(comanda.getNomeCliente(), comanda.getMesa()))
+				.toList());
+	}
+
+	public String rotulo(String nome, Integer mesa, Set<String> nomesEmMaisDeUmaMesa) {
+		return RegrasComanda.rotulo(nome, mesa, RegrasComanda.colide(nome, nomesEmMaisDeUmaMesa));
+	}
+
+	private List<ComandaDTO.Response> responder(List<Comanda> comandas) {
+		if (comandas.isEmpty()) {
+			return List.of();
+		}
+		Set<String> colisao = nomesEmMaisDeUmaMesa(comandas.get(0).getRestaurante().getId());
+		return comandas.stream()
+				.map(comanda -> ComandaDTO.Response.de(comanda, rotulo(comanda.getNomeCliente(), comanda.getMesa(), colisao)))
+				.toList();
+	}
+
+	private ComandaDTO.Response responder(Comanda comanda) {
+		Set<String> colisao = nomesEmMaisDeUmaMesa(comanda.getRestaurante().getId());
+		return ComandaDTO.Response.de(comanda, rotulo(comanda.getNomeCliente(), comanda.getMesa(), colisao));
 	}
 
 	private Usuario usuarioDoRestaurante(Restaurante restaurante, Long usuarioId) {
 		Usuario usuario = usuarioRepository.findById(usuarioId)
 				.orElseThrow(() -> new RecursoNaoEncontradoException("Usuário não encontrado"));
-		// vinculo, nao funcao: comanda de terceiro aponta para conta de salão
-		// vinculo, nao funcao: a comanda pertence a uma conta USUARIO do restaurante.
 		if (usuario.getPerfil() != Perfil.USUARIO
 				|| usuario.getRestaurante() == null
 				|| !usuario.getRestaurante().getId().equals(restaurante.getId())) {

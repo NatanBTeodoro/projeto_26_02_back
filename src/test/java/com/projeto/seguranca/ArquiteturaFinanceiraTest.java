@@ -11,11 +11,6 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
-/**
- * Equivalente ao ArchUnit pedido na Fase 5, sem dependência nova.
- * Uma exceção justificada leva {@code @SuppressWarnings("arquitetura-financeira")}
- * no método e um comentário dizendo por quê.
- */
 class ArquiteturaFinanceiraTest {
 
 	@Test
