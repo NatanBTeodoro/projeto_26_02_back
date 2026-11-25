@@ -93,7 +93,25 @@ class AcessoOperacaoHttpTest {
 
 	@Test
 	@WithMockUser(roles = "GESTOR")
-	void gestorPassaDoFiltroNasOperacoesFinanceiras() throws Exception {
+	void gestorSemFuncaoRecebe403NasOperacoesFinanceiras() throws Exception {
+		mockMvc.perform(post("/api/comandas/1/fechar")).andExpect(status().isForbidden());
+		mockMvc.perform(post("/api/pedidos/1/estorno")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"motivo\":\"x\"}")).andExpect(status().isForbidden());
+		mockMvc.perform(post("/api/pedidos/1/cancelamento")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"motivo\":\"x\"}")).andExpect(status().isForbidden());
+	}
+
+	@Test
+	@WithMockUser(authorities = {
+			"ROLE_GESTOR",
+			"FUNCAO_COMANDA_FECHAR",
+			"FUNCAO_PEDIDO_ESTORNAR",
+			"FUNCAO_PEDIDO_ESTORNAR_PAGO",
+			"FUNCAO_PEDIDO_CANCELAR"
+	})
+	void gestorComFuncaoPassaDoFiltroNasOperacoesFinanceiras() throws Exception {
 		mockMvc.perform(post("/api/comandas/1/fechar")).andExpect(status().isOk());
 		mockMvc.perform(post("/api/pedidos/1/estorno")
 				.contentType(MediaType.APPLICATION_JSON)
@@ -105,23 +123,23 @@ class AcessoOperacaoHttpTest {
 
 	@Test
 	@WithMockUser(authorities = {
+			"ROLE_USUARIO",
 			"FUNCAO_COMANDA_FECHAR",
-			"FUNCAO_PEDIDO_ESTORNAR_ATIVO",
-			"FUNCAO_PEDIDO_ESTORNAR_PAGO",
+			"FUNCAO_PEDIDO_ESTORNAR",
 			"FUNCAO_PEDIDO_CANCELAR"
 	})
-	void funcaoSemCargoNaoPassaDoFiltroFinanceiro() throws Exception {
-		mockMvc.perform(post("/api/comandas/1/fechar")).andExpect(status().isForbidden());
+	void usuarioComCargoCaixaPassaDoFiltroFinanceiro() throws Exception {
+		mockMvc.perform(post("/api/comandas/1/fechar")).andExpect(status().isOk());
 		mockMvc.perform(post("/api/pedidos/1/estorno")
 				.contentType(MediaType.APPLICATION_JSON)
-				.content("{\"motivo\":\"x\"}")).andExpect(status().isForbidden());
+				.content("{\"motivo\":\"x\"}")).andExpect(status().isOk());
 		mockMvc.perform(post("/api/pedidos/1/cancelamento")
 				.contentType(MediaType.APPLICATION_JSON)
-				.content("{\"motivo\":\"x\"}")).andExpect(status().isForbidden());
+				.content("{\"motivo\":\"x\"}")).andExpect(status().isOk());
 	}
 
 	@Test
-	@WithMockUser(roles = "ADMINISTRADOR")
+	@WithMockUser(authorities = { "ROLE_ADMINISTRADOR", "FUNCAO_PEDIDO_ESTORNAR_PAGO" })
 	void administradorPassaDoFiltroNasOperacoesFinanceiras() throws Exception {
 		mockMvc.perform(post("/api/pedidos/1/estorno")
 				.contentType(MediaType.APPLICATION_JSON)

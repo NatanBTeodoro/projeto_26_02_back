@@ -11,10 +11,22 @@ public class FuncaoDTO {
 	public record Atribuicao(
 			Long restauranteId,
 			List<AuthorityFuncao> conceder,
-			List<AuthorityFuncao> revogar) {
+			List<AuthorityFuncao> revogar,
+			List<Long> cargos,
+			List<AuthorityFuncao> authorities,
+			List<Long> revogarCargos,
+			List<AuthorityFuncao> revogarAuthorities) {
+
+		public Atribuicao(Long restauranteId, List<AuthorityFuncao> conceder, List<AuthorityFuncao> revogar) {
+			this(restauranteId, conceder, revogar, List.of(), List.of(), List.of(), List.of());
+		}
 	}
 
-	public record Linha(AuthorityFuncao authority, Long atribuidoPor, Instant atribuidoEm) {
+	public record Linha(AuthorityFuncao authority, Long atribuidoPor, Instant atribuidoEm, Long cargoOrigemId) {
+
+		public Linha(AuthorityFuncao authority, Long atribuidoPor, Instant atribuidoEm) {
+			this(authority, atribuidoPor, atribuidoEm, null);
+		}
 	}
 
 	public record CatalogoCriar(String rotulo, String descricao, List<AuthorityFuncao> authorities) {
@@ -32,7 +44,16 @@ public class FuncaoDTO {
 			Long autorId,
 			Long alvoId,
 			Long restauranteId,
-			AuthorityFuncao authority,
+			String authority,
 			AcaoPermissao acao) {
+	}
+
+	public record CargoItem(Long id, String nome, String descricao, boolean ativo, List<AuthorityFuncao> authorities) {
+	}
+
+	public record CargoCriar(String nome, String descricao, List<AuthorityFuncao> authorities) {
+	}
+
+	public record CargoAtualizar(String nome, String descricao, Boolean ativo, List<AuthorityFuncao> authorities) {
 	}
 }

@@ -19,7 +19,21 @@ public final class AnaliseDTO {
 			BigDecimal margem,
 			ClasseMenu classe,
 			String recomendacao,
-			BigDecimal margemPercentual) {
+			BigDecimal margemPercentual,
+			BigDecimal custoBruto) {
+
+		public Item(
+				Long produtoId,
+				String nome,
+				String categoria,
+				long quantidade,
+				BigDecimal popularidade,
+				BigDecimal margem,
+				ClasseMenu classe,
+				String recomendacao,
+				BigDecimal margemPercentual) {
+			this(produtoId, nome, categoria, quantidade, popularidade, margem, classe, recomendacao, margemPercentual, null);
+		}
 	}
 
 	public record Response(
@@ -28,6 +42,18 @@ public final class AnaliseDTO {
 			BigDecimal ticketMedio,
 			BigDecimal limitePopularidade,
 			BigDecimal margemMedia,
-			List<Item> itens) {
+			List<Item> itens,
+			BigDecimal custoBruto,
+			BigDecimal coberturaDeCusto) {
+
+		public Response(
+				long quantidadePedidos,
+				BigDecimal receita,
+				BigDecimal ticketMedio,
+				BigDecimal limitePopularidade,
+				BigDecimal margemMedia,
+				List<Item> itens) {
+			this(quantidadePedidos, receita, ticketMedio, limitePopularidade, margemMedia, itens, null, null);
+		}
 	}
 }

@@ -49,8 +49,8 @@ class CsvMatrizTest {
 		assertEquals((byte) 0xBF, arquivo[2]);
 
 		String texto = new String(arquivo, 3, arquivo.length - 3, StandardCharsets.UTF_8);
-		assertTrue(texto.startsWith("Produto;Categoria;Quantidade;Popularidade (%);Lucro unitário (R$);Margem (%);Classe;Sugestão\n"));
-		assertTrue(texto.contains("Pizza Calabresa;Pizzas;120;18,5000;22,40;50,00;Estrela;"));
+		assertTrue(texto.startsWith("Produto;Categoria;Quantidade;Popularidade (%);Lucro unitário (R$);Margem (%);Custo bruto (R$);Cobertura de custo (%);Classe;Sugestão\n"));
+		assertTrue(texto.contains("Pizza Calabresa;Pizzas;120;18,5000;22,40;50,00;;;Estrela;"));
 	}
 
 	@Test
@@ -73,7 +73,7 @@ class CsvMatrizTest {
 						null)));
 
 		String texto = new String(csv(true).gerar(analise), StandardCharsets.UTF_8);
-		assertTrue(texto.contains("\"'=A;B \"\"x\"\"\";Bebidas;1;1,0000;;;Dado incompleto;"));
+		assertTrue(texto.contains("\"'=A;B \"\"x\"\"\";Bebidas;1;1,0000;;;;;Dado incompleto;"));
 	}
 
 	@Test
@@ -97,6 +97,8 @@ class CsvMatrizTest {
 
 		String texto = new String(csv(false).gerar(analise), StandardCharsets.UTF_8);
 		assertTrue(texto.contains("Produto;Categoria;Quantidade;Classe;Sugestão\n"));
+		assertTrue(!texto.contains("Custo bruto"));
+		assertTrue(!texto.contains("Cobertura de custo"));
 		assertTrue(texto.contains("Pizza Calabresa;Pizzas;120;Estrela;"));
 		assertTrue(!texto.contains("18,5000"));
 		assertTrue(!texto.contains("22,40"));

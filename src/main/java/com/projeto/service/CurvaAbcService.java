@@ -197,17 +197,37 @@ public class CurvaAbcService {
 							detalhe.margemPercentual(),
 							detalhe.classe(),
 							detalhe.variacaoLucro(),
-							detalhe.variacaoTexto());
+							detalhe.variacaoTexto(),
+							custoDoGrupo(grupos, item.id()));
 				})
 				.toList();
+		BigDecimal custoBruto = BigDecimal.ZERO;
+		for (Acumulo acumulo : grupos.values()) {
+			custoBruto = custoBruto.add(acumulo.custo);
+		}
+		BigDecimal faturamentoEscalado = faturamento.setScale(2, RoundingMode.HALF_UP);
+		BigDecimal cobertura = faturamentoEscalado.signum() == 0
+				? null
+				: faturamentoComCusto.multiply(new BigDecimal("100")).divide(faturamentoEscalado, 2, RoundingMode.HALF_UP);
 		return new CurvaAbcDTO.Response(
 				CurvaAbc.CODIGO,
 				resultado.lucroBruto(),
 				linhasSemCusto,
 				fora,
 				itens,
-				faturamento.setScale(2, RoundingMode.HALF_UP),
-				margem(resultado.lucroBruto(), faturamentoComCusto));
+				faturamentoEscalado,
+				margem(resultado.lucroBruto(), faturamentoComCusto),
+				custoBruto.setScale(2, RoundingMode.HALF_UP),
+				cobertura);
+	}
+
+	private static BigDecimal custoDoGrupo(Map<Long, Acumulo> grupos, String id) {
+		for (Acumulo acumulo : grupos.values()) {
+			if (acumulo.id.equals(id)) {
+				return acumulo.custo.setScale(2, RoundingMode.HALF_UP);
+			}
+		}
+		return null;
 	}
 
 	private long acumular(List<Pedido> pedidos, Map<Long, Acumulo> grupos, java.util.function.Function<PedidoItem, Long> chave) {
@@ -247,6 +267,7 @@ public class CurvaAbcService {
 						.multiply(BigDecimal.valueOf(item.getQuantidade()));
 				acumulo.lucro = acumulo.lucro.add(lucro);
 				acumulo.faturamentoComCusto = acumulo.faturamentoComCusto.add(venda);
+				acumulo.custo = acumulo.custo.add(item.getCustoUnitario().multiply(BigDecimal.valueOf(item.getQuantidade())));
 				acumulo.teveCusto = true;
 			}
 		}
@@ -296,6 +317,7 @@ public class CurvaAbcService {
 		private BigDecimal lucro = BigDecimal.ZERO;
 		private BigDecimal faturamento = BigDecimal.ZERO;
 		private BigDecimal faturamentoComCusto = BigDecimal.ZERO;
+		private BigDecimal custo = BigDecimal.ZERO;
 		private long quantidade;
 		private boolean teveCusto;
 		private boolean teveSemCusto;

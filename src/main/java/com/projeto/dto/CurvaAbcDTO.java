@@ -23,7 +23,8 @@ public final class CurvaAbcDTO {
 			BigDecimal margemPercentual,
 			String classe,
 			BigDecimal variacaoLucro,
-			String variacaoTexto) {
+			String variacaoTexto,
+			BigDecimal custoBruto) {
 	}
 
 	public record Response(
@@ -33,6 +34,8 @@ public final class CurvaAbcDTO {
 			List<String> foraDaCurva,
 			List<Item> itens,
 			BigDecimal faturamento,
-			BigDecimal margemPercentual) {
+			BigDecimal margemPercentual,
+			BigDecimal custoBruto,
+			BigDecimal coberturaDeCusto) {
 	}
 }

@@ -62,7 +62,7 @@ class FuncaoAtribuicaoServiceTest {
 	@BeforeEach
 	void preparar() {
 		service = new FuncaoAtribuicaoService(
-				escopo, autorizacao, usuarios, globais, doRestaurante, catalogo, auditoria, consulta);
+				escopo, autorizacao, usuarios, globais, doRestaurante, catalogo, auditoria, consulta, org.mockito.Mockito.mock(CargoRedeService.class));
 		admin = pessoa(1L, Perfil.ADMINISTRADOR);
 		gestor = pessoa(2L, Perfil.GESTOR);
 		salao = pessoa(3L, Perfil.USUARIO);
@@ -99,10 +99,10 @@ class FuncaoAtribuicaoServiceTest {
 		quando(admin, salao);
 		doThrow(new AccessDeniedException("Acesso negado"))
 				.when(autorizacao)
-				.exigirPodeConceder(admin, AuthorityFuncao.RESTAURANTE_GERIR);
+				.exigirPodeConceder(admin, AuthorityFuncao.AUDITORIA_VER);
 
 		assertThrows(AccessDeniedException.class, () -> service.aplicar(
-				3L, new FuncaoDTO.Atribuicao(9L, List.of(AuthorityFuncao.RESTAURANTE_GERIR), List.of())));
+				3L, new FuncaoDTO.Atribuicao(9L, List.of(AuthorityFuncao.AUDITORIA_VER), List.of())));
 		verify(auditoria, never()).save(any());
 	}
 
@@ -116,7 +116,7 @@ class FuncaoAtribuicaoServiceTest {
 
 		verify(auditoria).save(org.mockito.ArgumentMatchers.argThat(registro ->
 				registro.getAcao() == AcaoPermissao.CONCEDER
-						&& registro.getAuthority() == AuthorityFuncao.CARDAPIO_ESCREVER
+						&& "CARDAPIO_ESCREVER".equals(registro.getAuthority())
 						&& registro.getAlvoId().equals(3L)));
 	}
 
@@ -205,7 +205,7 @@ class FuncaoAtribuicaoServiceTest {
 		registro.setId(1L);
 		registro.setAlvoId(alvoId);
 		registro.setRestauranteId(restauranteId);
-		registro.setAuthority(AuthorityFuncao.CARDAPIO_ESCREVER);
+		registro.setAuthority(AuthorityFuncao.CARDAPIO_ESCREVER.name());
 		registro.setAcao(AcaoPermissao.CONCEDER);
 		registro.setAutorId(1L);
 		registro.setDataHora(java.time.Instant.now());

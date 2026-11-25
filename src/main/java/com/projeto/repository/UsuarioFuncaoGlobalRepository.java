@@ -14,4 +14,8 @@ public interface UsuarioFuncaoGlobalRepository extends JpaRepository<UsuarioFunc
 	boolean existsByUsuarioIdAndAuthority(Long usuarioId, AuthorityFuncao authority);
 
 	void deleteByUsuarioIdAndAuthority(Long usuarioId, AuthorityFuncao authority);
+
+	List<UsuarioFuncaoGlobal> findByCargoOrigemId(Long cargoOrigemId);
+
+	List<UsuarioFuncaoGlobal> findByUsuarioIdAndCargoOrigemId(Long usuarioId, Long cargoOrigemId);
 }

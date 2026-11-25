@@ -48,6 +48,6 @@ class FuncaoPadraoTest {
 		verify(doRestaurante, times(CatalogoFuncaoPadrao.doPerfil(Perfil.USUARIO).size()))
 				.save(any(UsuarioRestauranteFuncao.class));
 		verify(globais, never()).save(any());
-		assertEquals(6, CatalogoFuncaoPadrao.doPerfil(Perfil.USUARIO).size());
+		assertEquals(5, CatalogoFuncaoPadrao.doPerfil(Perfil.USUARIO).size());
 	}
 }

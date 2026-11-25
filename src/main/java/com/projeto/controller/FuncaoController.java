@@ -13,15 +13,18 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.projeto.dto.FuncaoDTO;
 import com.projeto.entity.enums.AuthorityFuncao;
+import com.projeto.service.CargoRedeService;
 import com.projeto.service.FuncaoAtribuicaoService;
 
 @RestController
 public class FuncaoController {
 
 	private final FuncaoAtribuicaoService funcoes;
+	private final CargoRedeService cargos;
 
-	public FuncaoController(FuncaoAtribuicaoService funcoes) {
+	public FuncaoController(FuncaoAtribuicaoService funcoes, CargoRedeService cargos) {
 		this.funcoes = funcoes;
+		this.cargos = cargos;
 	}
 
 	@GetMapping("/api/funcoes/minhas")
@@ -61,5 +64,25 @@ public class FuncaoController {
 			@RequestParam(required = false) LocalDate de,
 			@RequestParam(required = false) LocalDate ate) {
 		return funcoes.consultarAuditoria(alvoId, restauranteId, de, ate);
+	}
+
+	@GetMapping("/api/admin/cargos")
+	public List<FuncaoDTO.CargoItem> cargos() {
+		return cargos.listarDaRede();
+	}
+
+	@PostMapping("/api/admin/cargos")
+	public FuncaoDTO.CargoItem criarCargo(@RequestBody FuncaoDTO.CargoCriar pedido) {
+		return cargos.criar(pedido);
+	}
+
+	@PutMapping("/api/admin/cargos/{id}")
+	public FuncaoDTO.CargoItem atualizarCargo(@PathVariable Long id, @RequestBody FuncaoDTO.CargoAtualizar pedido) {
+		return cargos.atualizar(id, pedido);
+	}
+
+	@GetMapping("/api/cargos/atribuiveis")
+	public List<FuncaoDTO.CargoItem> atribuiveis() {
+		return cargos.atribuiveis();
 	}
 }

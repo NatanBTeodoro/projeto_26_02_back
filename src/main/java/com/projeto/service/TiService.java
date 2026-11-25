@@ -30,6 +30,7 @@ public class TiService {
 	private final PasswordEncoder passwordEncoder;
 	private final EscopoOperacao escopo;
 	private final FuncaoPadrao funcaoPadrao;
+	private final CargoRedeService cargoRede;
 	private final String emailPrincipal;
 
 	public TiService(
@@ -39,6 +40,7 @@ public class TiService {
 			PasswordEncoder passwordEncoder,
 			EscopoOperacao escopo,
 			FuncaoPadrao funcaoPadrao,
+			CargoRedeService cargoRede,
 			@Value("${app.semente.email}") String emailPrincipal) {
 		this.usuarioRepository = usuarioRepository;
 		this.restauranteRepository = restauranteRepository;
@@ -46,6 +48,7 @@ public class TiService {
 		this.passwordEncoder = passwordEncoder;
 		this.escopo = escopo;
 		this.funcaoPadrao = funcaoPadrao;
+		this.cargoRede = cargoRede;
 		this.emailPrincipal = emailPrincipal;
 	}
 
@@ -71,6 +74,7 @@ public class TiService {
 		admin.setAtivo(true);
 		Usuario salvo = usuarioRepository.save(admin);
 		funcaoPadrao.aplicar(salvo);
+		cargoRede.garantirPadrao(salvo.getId());
 		return resposta(salvo);
 	}
 

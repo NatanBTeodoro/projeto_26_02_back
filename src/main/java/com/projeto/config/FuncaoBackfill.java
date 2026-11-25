@@ -11,7 +11,7 @@ import com.projeto.repository.UsuarioRepository;
 import com.projeto.service.FuncaoPadrao;
 
 @Component
-@Order(Ordered.LOWEST_PRECEDENCE)
+@Order(Ordered.LOWEST_PRECEDENCE - 1)
 public class FuncaoBackfill implements ApplicationRunner {
 
 	private final UsuarioRepository usuarios;

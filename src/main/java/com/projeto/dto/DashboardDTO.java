@@ -26,6 +26,8 @@ public final class DashboardDTO {
 			List<TopItem> topItens,
 			Map<ClasseMenu, Integer> itensPorClasse,
 			BigDecimal lucroBruto,
-			BigDecimal margemMedia) {
+			BigDecimal margemMedia,
+			BigDecimal custoBruto,
+			BigDecimal coberturaDeCusto) {
 	}
 }

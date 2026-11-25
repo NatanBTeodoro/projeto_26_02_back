@@ -220,14 +220,136 @@ CREATE TABLE IF NOT EXISTS auditoria_permissao (
 
 CREATE INDEX IF NOT EXISTS idx_auditoria_permissao_alvo ON auditoria_permissao (alvo_id, data_hora);
 
+-- Fase 5A: consolida o par próprio/unidade e renomeia o estorno de pedido ativo.
+DELETE FROM usuario_restaurante_funcao a
+USING usuario_restaurante_funcao b
+WHERE a.usuario_id = b.usuario_id
+  AND a.restaurante_id = b.restaurante_id
+  AND a.id <> b.id
+  AND (
+    (a.authority = 'COMANDA_LER_PROPRIA' AND b.authority = 'COMANDA_LER_UNIDADE')
+    OR (a.authority = 'COMANDA_ABRIR_PROPRIA' AND b.authority = 'COMANDA_ABRIR_UNIDADE')
+    OR (a.authority = 'PEDIDO_LER_PROPRIO' AND b.authority = 'PEDIDO_LER_UNIDADE')
+  );
+
+UPDATE usuario_restaurante_funcao a
+SET authority = 'COMANDA_LER'
+WHERE a.authority IN ('COMANDA_LER_PROPRIA', 'COMANDA_LER_UNIDADE')
+AND NOT EXISTS (
+    SELECT 1 FROM usuario_restaurante_funcao b
+    WHERE b.usuario_id = a.usuario_id AND b.restaurante_id = a.restaurante_id AND b.authority = 'COMANDA_LER'
+);
+UPDATE usuario_restaurante_funcao a
+SET authority = 'COMANDA_ABRIR'
+WHERE a.authority IN ('COMANDA_ABRIR_PROPRIA', 'COMANDA_ABRIR_UNIDADE')
+AND NOT EXISTS (
+    SELECT 1 FROM usuario_restaurante_funcao b
+    WHERE b.usuario_id = a.usuario_id AND b.restaurante_id = a.restaurante_id AND b.authority = 'COMANDA_ABRIR'
+);
+UPDATE usuario_restaurante_funcao a
+SET authority = 'PEDIDO_LER'
+WHERE a.authority IN ('PEDIDO_LER_PROPRIO', 'PEDIDO_LER_UNIDADE')
+AND NOT EXISTS (
+    SELECT 1 FROM usuario_restaurante_funcao b
+    WHERE b.usuario_id = a.usuario_id AND b.restaurante_id = a.restaurante_id AND b.authority = 'PEDIDO_LER'
+);
+UPDATE usuario_restaurante_funcao SET authority = 'PEDIDO_ESTORNAR' WHERE authority = 'PEDIDO_ESTORNAR_ATIVO';
+DELETE FROM usuario_restaurante_funcao
+WHERE authority IN ('COMANDA_LER_PROPRIA', 'COMANDA_LER_UNIDADE', 'COMANDA_ABRIR_PROPRIA', 'COMANDA_ABRIR_UNIDADE', 'PEDIDO_LER_PROPRIO', 'PEDIDO_LER_UNIDADE');
+
+DELETE FROM usuario_funcao_global a
+USING usuario_funcao_global b
+WHERE a.usuario_id = b.usuario_id
+  AND a.id <> b.id
+  AND (
+    (a.authority = 'COMANDA_LER_PROPRIA' AND b.authority = 'COMANDA_LER_UNIDADE')
+    OR (a.authority = 'COMANDA_ABRIR_PROPRIA' AND b.authority = 'COMANDA_ABRIR_UNIDADE')
+    OR (a.authority = 'PEDIDO_LER_PROPRIO' AND b.authority = 'PEDIDO_LER_UNIDADE')
+  );
+UPDATE usuario_funcao_global a
+SET authority = 'COMANDA_LER'
+WHERE a.authority IN ('COMANDA_LER_PROPRIA', 'COMANDA_LER_UNIDADE')
+AND NOT EXISTS (
+    SELECT 1 FROM usuario_funcao_global b
+    WHERE b.usuario_id = a.usuario_id AND b.authority = 'COMANDA_LER'
+);
+UPDATE usuario_funcao_global a
+SET authority = 'COMANDA_ABRIR'
+WHERE a.authority IN ('COMANDA_ABRIR_PROPRIA', 'COMANDA_ABRIR_UNIDADE')
+AND NOT EXISTS (
+    SELECT 1 FROM usuario_funcao_global b
+    WHERE b.usuario_id = a.usuario_id AND b.authority = 'COMANDA_ABRIR'
+);
+UPDATE usuario_funcao_global a
+SET authority = 'PEDIDO_LER'
+WHERE a.authority IN ('PEDIDO_LER_PROPRIO', 'PEDIDO_LER_UNIDADE')
+AND NOT EXISTS (
+    SELECT 1 FROM usuario_funcao_global b
+    WHERE b.usuario_id = a.usuario_id AND b.authority = 'PEDIDO_LER'
+);
+UPDATE usuario_funcao_global SET authority = 'PEDIDO_ESTORNAR' WHERE authority = 'PEDIDO_ESTORNAR_ATIVO';
+DELETE FROM usuario_funcao_global
+WHERE authority IN ('COMANDA_LER_PROPRIA', 'COMANDA_LER_UNIDADE', 'COMANDA_ABRIR_PROPRIA', 'COMANDA_ABRIR_UNIDADE', 'PEDIDO_LER_PROPRIO', 'PEDIDO_LER_UNIDADE');
+
+DELETE FROM funcao_rede a
+USING funcao_rede b
+WHERE a.admin_id = b.admin_id
+  AND a.id <> b.id
+  AND (
+    (a.authority = 'COMANDA_LER_PROPRIA' AND b.authority = 'COMANDA_LER_UNIDADE')
+    OR (a.authority = 'COMANDA_ABRIR_PROPRIA' AND b.authority = 'COMANDA_ABRIR_UNIDADE')
+    OR (a.authority = 'PEDIDO_LER_PROPRIO' AND b.authority = 'PEDIDO_LER_UNIDADE')
+  );
+UPDATE funcao_rede a SET authority = 'COMANDA_LER'
+WHERE a.authority IN ('COMANDA_LER_PROPRIA', 'COMANDA_LER_UNIDADE')
+AND NOT EXISTS (SELECT 1 FROM funcao_rede b WHERE b.admin_id = a.admin_id AND b.authority = 'COMANDA_LER');
+UPDATE funcao_rede a SET authority = 'COMANDA_ABRIR'
+WHERE a.authority IN ('COMANDA_ABRIR_PROPRIA', 'COMANDA_ABRIR_UNIDADE')
+AND NOT EXISTS (SELECT 1 FROM funcao_rede b WHERE b.admin_id = a.admin_id AND b.authority = 'COMANDA_ABRIR');
+UPDATE funcao_rede a SET authority = 'PEDIDO_LER'
+WHERE a.authority IN ('PEDIDO_LER_PROPRIO', 'PEDIDO_LER_UNIDADE')
+AND NOT EXISTS (SELECT 1 FROM funcao_rede b WHERE b.admin_id = a.admin_id AND b.authority = 'PEDIDO_LER');
+UPDATE funcao_rede SET authority = 'PEDIDO_ESTORNAR' WHERE authority = 'PEDIDO_ESTORNAR_ATIVO';
+DELETE FROM funcao_rede
+WHERE authority IN ('COMANDA_LER_PROPRIA', 'COMANDA_LER_UNIDADE', 'COMANDA_ABRIR_PROPRIA', 'COMANDA_ABRIR_UNIDADE', 'PEDIDO_LER_PROPRIO', 'PEDIDO_LER_UNIDADE');
+
+INSERT INTO auditoria_permissao (data_hora, autor_id, alvo_id, restaurante_id, authority, acao)
+SELECT CURRENT_TIMESTAMP, NULL, f.usuario_id, f.restaurante_id, f.authority, 'MIGRACAO_REDUCAO'
+FROM usuario_restaurante_funcao f
+WHERE f.authority IN ('CONTA_PROPRIA', 'RESTAURANTE_GERIR', 'REDE_VER', 'EQUIPE_PERFIL_TROCAR')
+AND NOT EXISTS (
+    SELECT 1 FROM auditoria_permissao ap
+    WHERE ap.alvo_id = f.usuario_id
+      AND ap.authority = f.authority
+      AND ap.acao = 'MIGRACAO_REDUCAO'
+      AND ap.restaurante_id IS NOT DISTINCT FROM f.restaurante_id
+);
+
+INSERT INTO auditoria_permissao (data_hora, autor_id, alvo_id, restaurante_id, authority, acao)
+SELECT CURRENT_TIMESTAMP, NULL, f.usuario_id, NULL, f.authority, 'MIGRACAO_REDUCAO'
+FROM usuario_funcao_global f
+WHERE f.authority IN ('CONTA_PROPRIA', 'RESTAURANTE_GERIR', 'REDE_VER', 'EQUIPE_PERFIL_TROCAR')
+AND NOT EXISTS (
+    SELECT 1 FROM auditoria_permissao ap
+    WHERE ap.alvo_id = f.usuario_id
+      AND ap.authority = f.authority
+      AND ap.acao = 'MIGRACAO_REDUCAO'
+      AND ap.restaurante_id IS NULL
+);
+
+DELETE FROM usuario_restaurante_funcao
+WHERE authority IN ('CONTA_PROPRIA', 'RESTAURANTE_GERIR', 'REDE_VER', 'EQUIPE_PERFIL_TROCAR');
+DELETE FROM usuario_funcao_global
+WHERE authority IN ('CONTA_PROPRIA', 'RESTAURANTE_GERIR', 'REDE_VER', 'EQUIPE_PERFIL_TROCAR');
+DELETE FROM funcao_rede
+WHERE authority IN ('CONTA_PROPRIA', 'RESTAURANTE_GERIR', 'REDE_VER', 'EQUIPE_PERFIL_TROCAR');
+
 INSERT INTO usuario_funcao_global (usuario_id, authority, atribuido_em)
 SELECT u.id, f.authority, CURRENT_TIMESTAMP
 FROM usuario u
 JOIN (VALUES
     ('PLATAFORMA_TI_GERIR'),
-    ('PLATAFORMA_ADMIN_GERIR'),
-    ('RECLAMACAO_LER'),
-    ('RECLAMACAO_RESPONDER')
+    ('PLATAFORMA_ADMIN_GERIR')
 ) AS f(authority) ON TRUE
 WHERE u.perfil = 'TI'
 AND NOT EXISTS (
@@ -238,33 +360,26 @@ INSERT INTO usuario_funcao_global (usuario_id, authority, atribuido_em)
 SELECT u.id, f.authority, CURRENT_TIMESTAMP
 FROM usuario u
 JOIN (VALUES
-    ('CONTA_PROPRIA'),
-    ('RESTAURANTE_GERIR'),
     ('EQUIPE_LER'),
     ('EQUIPE_USUARIO_GERIR'),
     ('EQUIPE_GESTOR_GERIR'),
-    ('EQUIPE_PERFIL_TROCAR'),
     ('EQUIPE_SENHA_REDEFINIR'),
     ('EQUIPE_FUNCAO_ATRIBUIR'),
+    ('CATALOGO_FUNCOES_GERIR'),
     ('CARDAPIO_LER'),
     ('CARDAPIO_ESCREVER'),
     ('CUSTO_LER'),
-    ('COMANDA_LER_PROPRIA'),
-    ('COMANDA_LER_UNIDADE'),
-    ('COMANDA_ABRIR_PROPRIA'),
-    ('COMANDA_ABRIR_UNIDADE'),
+    ('COMANDA_LER'),
+    ('COMANDA_ABRIR'),
     ('COMANDA_FECHAR'),
-    ('PEDIDO_LER_PROPRIO'),
-    ('PEDIDO_LER_UNIDADE'),
+    ('PEDIDO_LER'),
     ('PEDIDO_LANCAR'),
     ('PEDIDO_EDITAR'),
     ('PEDIDO_CANCELAR'),
-    ('PEDIDO_ESTORNAR_ATIVO'),
+    ('PEDIDO_ESTORNAR'),
     ('PEDIDO_ESTORNAR_PAGO'),
     ('ANALISE_VER_OPERACIONAL'),
     ('ANALISE_VER_FINANCEIRO'),
-    ('REDE_VER'),
-    ('CATALOGO_FUNCOES_GERIR'),
     ('RECLAMACAO_ABRIR'),
     ('RECLAMACAO_LER'),
     ('RECLAMACAO_RESPONDER'),
@@ -279,7 +394,6 @@ INSERT INTO usuario_restaurante_funcao (usuario_id, restaurante_id, authority, a
 SELECT u.id, u.restaurante_id, f.authority, CURRENT_TIMESTAMP
 FROM usuario u
 JOIN (VALUES
-    ('CONTA_PROPRIA'),
     ('EQUIPE_LER'),
     ('EQUIPE_USUARIO_GERIR'),
     ('EQUIPE_SENHA_REDEFINIR'),
@@ -287,22 +401,20 @@ JOIN (VALUES
     ('CARDAPIO_LER'),
     ('CARDAPIO_ESCREVER'),
     ('CUSTO_LER'),
-    ('COMANDA_LER_PROPRIA'),
-    ('COMANDA_LER_UNIDADE'),
-    ('COMANDA_ABRIR_PROPRIA'),
-    ('COMANDA_ABRIR_UNIDADE'),
+    ('COMANDA_LER'),
+    ('COMANDA_ABRIR'),
     ('COMANDA_FECHAR'),
-    ('PEDIDO_LER_PROPRIO'),
-    ('PEDIDO_LER_UNIDADE'),
+    ('PEDIDO_LER'),
     ('PEDIDO_LANCAR'),
     ('PEDIDO_EDITAR'),
     ('PEDIDO_CANCELAR'),
-    ('PEDIDO_ESTORNAR_ATIVO'),
+    ('PEDIDO_ESTORNAR'),
     ('PEDIDO_ESTORNAR_PAGO'),
     ('ANALISE_VER_OPERACIONAL'),
     ('ANALISE_VER_FINANCEIRO'),
     ('RECLAMACAO_ABRIR'),
-    ('RECLAMACAO_LER')
+    ('RECLAMACAO_LER'),
+    ('RECLAMACAO_RESPONDER')
 ) AS f(authority) ON TRUE
 WHERE u.perfil = 'GESTOR' AND u.restaurante_id IS NOT NULL
 AND NOT EXISTS (
@@ -314,10 +426,9 @@ INSERT INTO usuario_restaurante_funcao (usuario_id, restaurante_id, authority, a
 SELECT u.id, u.restaurante_id, f.authority, CURRENT_TIMESTAMP
 FROM usuario u
 JOIN (VALUES
-    ('CONTA_PROPRIA'),
-    ('COMANDA_LER_PROPRIA'),
-    ('COMANDA_ABRIR_PROPRIA'),
-    ('PEDIDO_LER_PROPRIO'),
+    ('COMANDA_LER'),
+    ('COMANDA_ABRIR'),
+    ('PEDIDO_LER'),
     ('PEDIDO_LANCAR'),
     ('CARDAPIO_LER')
 ) AS f(authority) ON TRUE
@@ -326,3 +437,22 @@ AND NOT EXISTS (
     SELECT 1 FROM usuario_restaurante_funcao g
     WHERE g.usuario_id = u.id AND g.restaurante_id = u.restaurante_id AND g.authority = f.authority
 );
+
+CREATE TABLE IF NOT EXISTS cargo_rede (
+    id BIGSERIAL PRIMARY KEY,
+    admin_id BIGINT NOT NULL REFERENCES usuario (id) ON DELETE CASCADE,
+    nome VARCHAR(80) NOT NULL,
+    descricao VARCHAR(400),
+    ativo BOOLEAN NOT NULL DEFAULT TRUE,
+    CONSTRAINT uk_cargo_rede UNIQUE (admin_id, nome)
+);
+
+CREATE TABLE IF NOT EXISTS cargo_rede_authority (
+    id BIGSERIAL PRIMARY KEY,
+    cargo_rede_id BIGINT NOT NULL REFERENCES cargo_rede (id) ON DELETE CASCADE,
+    authority VARCHAR(40) NOT NULL,
+    CONSTRAINT uk_cargo_rede_authority UNIQUE (cargo_rede_id, authority)
+);
+
+ALTER TABLE usuario_restaurante_funcao ADD COLUMN IF NOT EXISTS cargo_origem_id BIGINT;
+ALTER TABLE usuario_funcao_global ADD COLUMN IF NOT EXISTS cargo_origem_id BIGINT;

@@ -14,4 +14,9 @@ public interface UsuarioRestauranteFuncaoRepository extends JpaRepository<Usuari
 	boolean existsByUsuarioIdAndRestauranteIdAndAuthority(Long usuarioId, Long restauranteId, AuthorityFuncao authority);
 
 	void deleteByUsuarioIdAndRestauranteIdAndAuthority(Long usuarioId, Long restauranteId, AuthorityFuncao authority);
+
+	List<UsuarioRestauranteFuncao> findByCargoOrigemId(Long cargoOrigemId);
+
+	List<UsuarioRestauranteFuncao> findByUsuarioIdAndRestauranteIdAndCargoOrigemId(
+			Long usuarioId, Long restauranteId, Long cargoOrigemId);
 }

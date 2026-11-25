@@ -29,6 +29,21 @@ class LeituraVendasTest {
 		assertEquals(new BigDecimal("20.00"), ClassificadorCardapio.receita(linhas));
 	}
 
+	@Test
+	void custoBrutoUsaSoOItemQueTemCustoGravado() {
+		List<ClassificadorCardapio.Linha> linhas = List.of(
+				new ClassificadorCardapio.Linha(1L, "Agua", 2, new BigDecimal("5.00"), new BigDecimal("1.50"), "Bebidas"),
+				new ClassificadorCardapio.Linha(2L, "Suco", 2, new BigDecimal("5.00"), null, "Bebidas"));
+
+		LeituraVendas.Resumo resumo = LeituraVendas.resumir(linhas);
+
+		assertEquals(new BigDecimal("20.00"), resumo.faturamentoTotal());
+		assertEquals(new BigDecimal("10.00"), resumo.faturamentoComCusto());
+		assertEquals(new BigDecimal("3.00"), resumo.custoBruto());
+		assertEquals(new BigDecimal("7.00"), resumo.lucroBruto());
+		assertEquals(new BigDecimal("50.00"), resumo.coberturaDeCusto());
+	}
+
 	private static Pedido pedido(StatusPedido status, int quantidade, String preco) {
 		Produto produto = new Produto();
 		produto.setId(1L);

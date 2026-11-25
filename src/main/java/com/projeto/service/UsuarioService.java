@@ -35,6 +35,7 @@ public class UsuarioService {
 	private final PasswordEncoder passwordEncoder;
 	private final EscopoOperacao escopo;
 	private final FuncaoPadrao funcaoPadrao;
+	private final CargoRedeService cargoRede;
 	private final Autorizacao autorizacao;
 	private final String emailPrincipal;
 
@@ -46,6 +47,7 @@ public class UsuarioService {
 			PasswordEncoder passwordEncoder,
 			EscopoOperacao escopo,
 			FuncaoPadrao funcaoPadrao,
+			CargoRedeService cargoRede,
 			Autorizacao autorizacao,
 			@Value("${app.semente.email}") String emailPrincipal) {
 		this.usuarioRepository = usuarioRepository;
@@ -55,6 +57,7 @@ public class UsuarioService {
 		this.passwordEncoder = passwordEncoder;
 		this.escopo = escopo;
 		this.funcaoPadrao = funcaoPadrao;
+		this.cargoRede = cargoRede;
 		this.autorizacao = autorizacao;
 		this.emailPrincipal = emailPrincipal;
 	}
@@ -106,6 +109,7 @@ public class UsuarioService {
 		usuario.setAtivo(true);
 		Usuario salvo = usuarioRepository.save(usuario);
 		funcaoPadrao.aplicar(salvo);
+		cargoRede.vincularPacote(salvo);
 		return UsuarioDTO.Response.de(salvo);
 	}
 
@@ -118,7 +122,6 @@ public class UsuarioService {
 			if (candidato.getPerfil() != dto.perfil()) {
 				ContaPrincipal.exigirPodeRebaixar(candidato.getEmail(), emailPrincipal, dto.perfil());
 				Usuario atual = escopo.usuario();
-				autorizacao.exigir(AuthorityFuncao.EQUIPE_PERFIL_TROCAR);
 				if (dto.perfil() == Perfil.GESTOR) {
 					autorizacao.exigir(AuthorityFuncao.EQUIPE_GESTOR_GERIR);
 				}

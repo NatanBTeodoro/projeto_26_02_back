@@ -3,7 +3,6 @@ package com.projeto.entity;
 import java.time.Instant;
 
 import com.projeto.entity.enums.AcaoPermissao;
-import com.projeto.entity.enums.AuthorityFuncao;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -40,9 +39,8 @@ public class AuditoriaPermissao {
 	@Column(name = "restaurante_id")
 	private Long restauranteId;
 
-	@Enumerated(EnumType.STRING)
 	@Column(nullable = false, length = 40)
-	private AuthorityFuncao authority;
+	private String authority;
 
 	@Enumerated(EnumType.STRING)
 	@Column(nullable = false, length = 20)

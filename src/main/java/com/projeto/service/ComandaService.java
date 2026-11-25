@@ -54,15 +54,12 @@ public class ComandaService {
 	}
 
 	public List<ComandaDTO.Response> listar(Long usuarioId) {
-		if (autorizacao.tem(AuthorityFuncao.COMANDA_LER_PROPRIA)
-				&& !autorizacao.tem(AuthorityFuncao.COMANDA_LER_UNIDADE)) {
+		autorizacao.exigir(AuthorityFuncao.COMANDA_LER);
+		if (!EscopoVinculo.deUnidade(escopo.usuario().getPerfil())) {
 			Usuario atual = escopo.usuario();
 			return comandaRepository.findByUsuarioIdOrderByIdDesc(atual.getId()).stream()
 					.map(ComandaDTO.Response::de)
 					.toList();
-		}
-		if (!autorizacao.tem(AuthorityFuncao.COMANDA_LER_UNIDADE)) {
-			throw new AccessDeniedException("Acesso negado");
 		}
 		Restaurante restaurante = escopo.restauranteDoContexto();
 		if (usuarioId == null) {
@@ -79,16 +76,15 @@ public class ComandaService {
 	public ComandaDTO.Response abrir(ComandaDTO.Create dto) {
 		Usuario atual = escopo.usuario();
 		Restaurante restaurante = escopo.exigirOperavel();
+		autorizacao.exigir(AuthorityFuncao.COMANDA_ABRIR);
 		Usuario dono;
-		if (autorizacao.tem(AuthorityFuncao.COMANDA_ABRIR_UNIDADE)) {
+		if (EscopoVinculo.deUnidade(atual.getPerfil())) {
 			if (dto == null || dto.usuarioId() == null) {
 				throw new RegraDeNegocioException("Informe o usuário");
 			}
 			dono = usuarioDoRestaurante(restaurante, dto.usuarioId());
-		} else if (autorizacao.tem(AuthorityFuncao.COMANDA_ABRIR_PROPRIA)) {
-			dono = atual;
 		} else {
-			throw new AccessDeniedException("Acesso negado");
+			dono = atual;
 		}
 		Comanda comanda = nova(restaurante, dono);
 		return ComandaDTO.Response.de(comanda);

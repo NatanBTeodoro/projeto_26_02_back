@@ -22,7 +22,7 @@ public class CsvMatriz {
 		boolean financeiro = autorizacao.tem(AuthorityFuncao.ANALISE_VER_FINANCEIRO);
 		StringBuilder texto = new StringBuilder();
 		if (financeiro) {
-			texto.append("Produto;Categoria;Quantidade;Popularidade (%);Lucro unitário (R$);Margem (%);Classe;Sugestão\n");
+			texto.append("Produto;Categoria;Quantidade;Popularidade (%);Lucro unitário (R$);Margem (%);Custo bruto (R$);Cobertura de custo (%);Classe;Sugestão\n");
 		} else {
 			texto.append("Produto;Categoria;Quantidade;Classe;Sugestão\n");
 		}
@@ -33,7 +33,9 @@ public class CsvMatriz {
 			if (financeiro) {
 				texto.append(decimal(linha.popularidade())).append(';')
 						.append(decimal(linha.margem())).append(';')
-						.append(decimal(linha.margemPercentual())).append(';');
+						.append(decimal(linha.margemPercentual())).append(';')
+						.append(decimal(linha.custoBruto())).append(';')
+						.append(decimal(analise.coberturaDeCusto())).append(';');
 			}
 			texto.append(campo(linha.classe().getRotulo())).append(';')
 					.append(campo(linha.recomendacao())).append('\n');

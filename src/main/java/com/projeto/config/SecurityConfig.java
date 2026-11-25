@@ -91,10 +91,10 @@ public class SecurityConfig {
 						.requestMatchers("/api/curva-abc/**").hasRole("ADMINISTRADOR")
 						.requestMatchers("/api/painel-admin/**").hasRole("ADMINISTRADOR")
 						.requestMatchers("/api/usuarios", "/api/usuarios/**").hasAnyRole("ADMINISTRADOR", "GESTOR")
-						// Dupla trava: o cargo continua obrigatório no filtro. A função é exigida no serviço.
-						.requestMatchers(HttpMethod.POST, "/api/comandas/*/fechar").hasAnyRole("GESTOR", "ADMINISTRADOR")
-						.requestMatchers(HttpMethod.POST, "/api/pedidos/*/estorno").hasAnyRole("GESTOR", "ADMINISTRADOR")
-						.requestMatchers(HttpMethod.POST, "/api/pedidos/*/cancelamento").hasAnyRole("GESTOR", "ADMINISTRADOR")
+						// Dupla trava: a authority entra no filtro e de novo no serviço.
+						.requestMatchers(HttpMethod.POST, "/api/comandas/*/fechar").hasAnyAuthority("FUNCAO_COMANDA_FECHAR")
+						.requestMatchers(HttpMethod.POST, "/api/pedidos/*/estorno").hasAnyAuthority("FUNCAO_PEDIDO_ESTORNAR", "FUNCAO_PEDIDO_ESTORNAR_PAGO")
+						.requestMatchers(HttpMethod.POST, "/api/pedidos/*/cancelamento").hasAnyAuthority("FUNCAO_PEDIDO_CANCELAR")
 						.requestMatchers(HttpMethod.POST, "/api/categorias", "/api/categorias/**").hasAnyAuthority("ROLE_GESTOR", "ROLE_ADMINISTRADOR", "FUNCAO_CARDAPIO_ESCREVER")
 						.requestMatchers(HttpMethod.PUT, "/api/categorias", "/api/categorias/**").hasAnyAuthority("ROLE_GESTOR", "ROLE_ADMINISTRADOR", "FUNCAO_CARDAPIO_ESCREVER")
 						.requestMatchers(HttpMethod.POST, "/api/produtos/importar/confirmar").hasAnyAuthority("ROLE_GESTOR", "ROLE_ADMINISTRADOR", "FUNCAO_CARDAPIO_ESCREVER")
@@ -103,6 +103,7 @@ public class SecurityConfig {
 						.requestMatchers(HttpMethod.GET, "/api/dashboard").hasAnyAuthority("ROLE_GESTOR", "ROLE_ADMINISTRADOR", "FUNCAO_ANALISE_VER_OPERACIONAL", "FUNCAO_ANALISE_VER_FINANCEIRO")
 						.requestMatchers(HttpMethod.GET, "/api/analise", "/api/analise/**").hasAnyAuthority("ROLE_GESTOR", "ROLE_ADMINISTRADOR", "FUNCAO_ANALISE_VER_OPERACIONAL", "FUNCAO_ANALISE_VER_FINANCEIRO")
 						.requestMatchers("/api/admin/funcoes", "/api/admin/funcoes/**").hasAnyAuthority("ROLE_ADMINISTRADOR", "FUNCAO_CATALOGO_FUNCOES_GERIR")
+						.requestMatchers("/api/admin/cargos", "/api/admin/cargos/**").hasAnyAuthority("ROLE_ADMINISTRADOR", "FUNCAO_CATALOGO_FUNCOES_GERIR")
 						.requestMatchers("/api/auditoria/permissoes", "/api/auditoria/permissoes/**").hasAnyAuthority("ROLE_ADMINISTRADOR", "FUNCAO_AUDITORIA_VER")
 						// GET /api/produtos/importar/modelo segue em anyRequest: qualquer autenticado baixa o CSV.
 						.anyRequest().authenticated());

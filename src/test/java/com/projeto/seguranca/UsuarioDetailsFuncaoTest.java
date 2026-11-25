@@ -18,7 +18,8 @@ class UsuarioDetailsFuncaoTest {
 		assertTrue(autoridades(Perfil.TI).contains("ROLE_TI"));
 		assertTrue(autoridades(Perfil.TI).contains("FUNCAO_PLATAFORMA_TI_GERIR"));
 		assertTrue(autoridades(Perfil.ADMINISTRADOR).contains("ROLE_ADMINISTRADOR"));
-		assertTrue(autoridades(Perfil.ADMINISTRADOR).contains("FUNCAO_REDE_VER"));
+		assertTrue(autoridades(Perfil.ADMINISTRADOR).contains("FUNCAO_AUDITORIA_VER"));
+		assertTrue(autoridades(Perfil.ADMINISTRADOR).contains("FUNCAO_COMANDA_LER"));
 		assertTrue(autoridades(Perfil.GESTOR).contains("ROLE_GESTOR"));
 		assertTrue(autoridades(Perfil.GESTOR).contains("FUNCAO_COMANDA_FECHAR"));
 		assertTrue(autoridades(Perfil.USUARIO).contains("ROLE_USUARIO"));

@@ -54,7 +54,9 @@ public class AnaliseService {
 
 		long quantidadePedidos = LeituraVendas.contarPedidosAtivos(pedidos);
 		
-		BigDecimal receita = ClassificadorCardapio.receita(linhas);
+		LeituraVendas.Resumo resumo = LeituraVendas.resumir(linhas);
+		java.util.Map<Long, BigDecimal> custos = LeituraVendas.custoPorProduto(linhas);
+		BigDecimal receita = resumo.faturamentoTotal();
 		
 		BigDecimal ticket = quantidadePedidos == 0
 				? BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP)
@@ -70,7 +72,8 @@ public class AnaliseService {
 						item.margem(),
 						item.classe(),
 						item.recomendacao(),
-						item.margemPercentual()))
+						item.margemPercentual(),
+						custos.get(item.produtoId())))
 				.toList();
 		AnaliseDTO.Response cheio = new AnaliseDTO.Response(
 				quantidadePedidos,
@@ -78,7 +81,9 @@ public class AnaliseService {
 				ticket,
 				resultado.limitePopularidade(),
 				resultado.margemMedia(),
-				itens);
+				itens,
+				resumo.custoBruto(),
+				resumo.coberturaDeCusto());
 		return aplicarVisao(cheio);
 	}
 
@@ -106,8 +111,9 @@ public class AnaliseService {
 						null,
 						item.classe(),
 						item.recomendacao(),
+						null,
 						null))
 				.toList();
-		return new AnaliseDTO.Response(cheio.quantidadePedidos(), null, null, null, null, itens);
+		return new AnaliseDTO.Response(cheio.quantidadePedidos(), null, null, null, null, itens, null, null);
 	}
 }

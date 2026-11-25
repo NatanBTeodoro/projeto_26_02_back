@@ -66,19 +66,17 @@ public class PedidoService {
 	}
 
 	public List<PedidoDTO.Response> listar() {
-		if (autorizacao.tem(AuthorityFuncao.PEDIDO_LER_UNIDADE)) {
+		autorizacao.exigir(AuthorityFuncao.PEDIDO_LER);
+		if (EscopoVinculo.deUnidade(escopo.usuario().getPerfil())) {
 			Restaurante restaurante = escopo.restauranteDoContexto();
 			return pedidoRepository.findByRestauranteIdOrderByDataHoraDesc(restaurante.getId()).stream()
 					.map(PedidoDTO.Response::de)
 					.toList();
 		}
-		if (autorizacao.tem(AuthorityFuncao.PEDIDO_LER_PROPRIO)) {
-			Usuario atual = escopo.usuario();
-			return pedidoRepository.findByUsuarioIdOrderByDataHoraDesc(atual.getId()).stream()
-					.map(PedidoDTO.Response::de)
-					.toList();
-		}
-		throw new AccessDeniedException("Acesso negado");
+		Usuario atual = escopo.usuario();
+		return pedidoRepository.findByUsuarioIdOrderByDataHoraDesc(atual.getId()).stream()
+				.map(PedidoDTO.Response::de)
+				.toList();
 	}
 
 	@Transactional
@@ -111,7 +109,7 @@ public class PedidoService {
 		if (pedido.getStatus() == StatusPedido.PAGO) {
 			autorizacao.exigir(AuthorityFuncao.PEDIDO_ESTORNAR_PAGO);
 		} else {
-			autorizacao.exigir(AuthorityFuncao.PEDIDO_ESTORNAR_ATIVO);
+			autorizacao.exigir(AuthorityFuncao.PEDIDO_ESTORNAR);
 		}
 		StatusPedido anterior = pedido.getStatus();
 		String antes = auditoria.json(java.util.Map.of(
@@ -223,11 +221,12 @@ public class PedidoService {
 	}
 
 	private Usuario autorDoPedido(Usuario atual, Restaurante restaurante, Long usuarioId) {
-		if (autorizacao.tem(AuthorityFuncao.COMANDA_ABRIR_UNIDADE)) {
+		if (EscopoVinculo.deUnidade(atual.getPerfil())) {
+			autorizacao.exigir(AuthorityFuncao.COMANDA_ABRIR);
 			return usuarioDaUnidade(restaurante, usuarioId);
 		}
-		if (!autorizacao.tem(AuthorityFuncao.COMANDA_ABRIR_PROPRIA)
-				&& !autorizacao.tem(AuthorityFuncao.PEDIDO_LER_PROPRIO)) {
+		if (!autorizacao.tem(AuthorityFuncao.COMANDA_ABRIR)
+				&& !autorizacao.tem(AuthorityFuncao.PEDIDO_LER)) {
 			throw new AccessDeniedException("Acesso negado");
 		}
 		if (usuarioId != null && !usuarioId.equals(atual.getId())) {
@@ -254,7 +253,7 @@ public class PedidoService {
 	}
 
 	private Comanda resolverComanda(Usuario atual, Restaurante restaurante, Usuario autorPedido, Long comandaId) {
-		if (!autorizacao.tem(AuthorityFuncao.COMANDA_ABRIR_UNIDADE) && comandaId == null) {
+		if (!EscopoVinculo.deUnidade(atual.getPerfil()) && comandaId == null) {
 			throw new RegraDeNegocioException("Abra uma comanda antes de lançar o pedido");
 		}
 		if (comandaId == null) {

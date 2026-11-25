@@ -49,7 +49,9 @@ public final class PainelAdminDTO {
 			BigDecimal percentualEstrelas,
 			BigDecimal vendidosSemCusto,
 			BigDecimal cardapioSemCusto,
-			List<Parte> classes) {
+			List<Parte> classes,
+			BigDecimal custoBruto,
+			BigDecimal coberturaDeCusto) {
 	}
 
 	public record Alerta(String severidade, String texto, BigDecimal impacto) {

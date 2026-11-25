@@ -72,6 +72,10 @@ public final class PainelAdmin {
 						percentual(agora.faturamento, antes.faturamento, semPeriodoAnterior)),
 				kpi("lucro", "Lucro bruto", "MOEDA", agora.lucro, null, null, false, List.of(),
 						percentual(agora.lucro, antes.lucro, semPeriodoAnterior)),
+				kpi("custo", "Custo bruto", "MOEDA", agora.custo, null,
+						cobertura == null ? null : "Cobertura de custo " + numero(cobertura, 0) + "%",
+						false, List.of(),
+						percentual(agora.custo, antes.custo, semPeriodoAnterior)),
 				kpi("margem", "Margem média", "PERCENTUAL", margem, null, complementoMargem, false, List.of(),
 						pontos(margem, margemAntes, semPeriodoAnterior)),
 				kpi("pedidos", "Pedidos", "INTEIRO", BigDecimal.valueOf(agora.pedidos), null, null, false, List.of(),
@@ -152,7 +156,9 @@ public final class PainelAdmin {
 					estrelas,
 					vendidosSemCusto,
 					cardapioSemCusto,
-					partes));
+					partes,
+					dinheiro(bloco.custo),
+					razao(bloco.faturamentoComCusto, bloco.faturamento)));
 
 			if (!amostraPequena) {
 				avisarCardapio(alertas, bloco, contagem, totalItens, estrelas);
@@ -397,13 +403,16 @@ public final class PainelAdmin {
 						.multiply(BigDecimal.valueOf(item.getQuantidade()));
 				totais.lucro = totais.lucro.add(lucro);
 				totais.faturamentoComCusto = totais.faturamentoComCusto.add(receita);
+				totais.custo = totais.custo.add(item.getCustoUnitario().multiply(BigDecimal.valueOf(item.getQuantidade())));
 				bloco.lucro = bloco.lucro.add(lucro);
 				bloco.faturamentoComCusto = bloco.faturamentoComCusto.add(receita);
+				bloco.custo = bloco.custo.add(item.getCustoUnitario().multiply(BigDecimal.valueOf(item.getQuantidade())));
 			}
 		}
 		totais.faturamento = dinheiro(totais.faturamento);
 		totais.lucro = dinheiro(totais.lucro);
 		totais.faturamentoComCusto = dinheiro(totais.faturamentoComCusto);
+		totais.custo = dinheiro(totais.custo);
 		totais.restaurantes = (int) blocos.values().stream().filter(bloco -> bloco.pedidos > 0).count();
 		return totais;
 	}
@@ -548,6 +557,7 @@ public final class PainelAdmin {
 		private BigDecimal faturamento = BigDecimal.ZERO;
 		private BigDecimal faturamentoComCusto = BigDecimal.ZERO;
 		private BigDecimal lucro = BigDecimal.ZERO;
+		private BigDecimal custo = BigDecimal.ZERO;
 		private long pedidos;
 		private int restaurantes;
 	}
@@ -562,6 +572,7 @@ public final class PainelAdmin {
 		private BigDecimal faturamento = BigDecimal.ZERO;
 		private BigDecimal faturamentoComCusto = BigDecimal.ZERO;
 		private BigDecimal lucro = BigDecimal.ZERO;
+		private BigDecimal custo = BigDecimal.ZERO;
 
 		private Bloco(long id, String nome) {
 			this.id = id;

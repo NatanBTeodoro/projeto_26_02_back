@@ -42,4 +42,7 @@ public class UsuarioFuncaoGlobal {
 
 	@Column(name = "atribuido_em", nullable = false)
 	private Instant atribuidoEm;
+
+	@Column(name = "cargo_origem_id")
+	private Long cargoOrigemId;
 }

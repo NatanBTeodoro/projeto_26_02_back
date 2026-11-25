@@ -18,6 +18,13 @@ class TrocaPerfilTest {
 	}
 
 	@Test
+	void gestorNaoTrocaPerfil() {
+		assertThrows(
+				AccessDeniedException.class,
+				() -> TrocaPerfil.validar(Perfil.GESTOR, 3L, 4L, Perfil.USUARIO, Perfil.GESTOR));
+	}
+
+	@Test
 	void tiNaoTrocaEAdminNaoTrocaOProprio() {
 		assertThrows(
 				AccessDeniedException.class,

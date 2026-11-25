@@ -42,6 +42,8 @@ class UsuarioServiceCriarFuncaoTest {
 	@Mock
 	private FuncaoPadrao funcaoPadrao;
 	@Mock
+	private CargoRedeService cargoRede;
+	@Mock
 	private Autorizacao autorizacao;
 
 	@Test
@@ -70,6 +72,7 @@ class UsuarioServiceCriarFuncaoTest {
 				passwordEncoder,
 				escopo,
 				funcaoPadrao,
+				cargoRede,
 				autorizacao,
 				"admin@admin.com");
 
@@ -77,6 +80,7 @@ class UsuarioServiceCriarFuncaoTest {
 
 		ArgumentCaptor<Usuario> captor = ArgumentCaptor.forClass(Usuario.class);
 		verify(funcaoPadrao).aplicar(captor.capture());
+		verify(cargoRede).vincularPacote(captor.getValue());
 		org.junit.jupiter.api.Assertions.assertEquals(30L, captor.getValue().getId());
 		org.junit.jupiter.api.Assertions.assertEquals(Perfil.USUARIO, captor.getValue().getPerfil());
 		org.junit.jupiter.api.Assertions.assertEquals(9L, captor.getValue().getRestaurante().getId());

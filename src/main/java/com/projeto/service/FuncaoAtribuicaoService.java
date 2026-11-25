@@ -34,9 +34,6 @@ public class FuncaoAtribuicaoService {
 
 	private static final Set<AuthorityFuncao> BLOQUEADAS_PARA_GESTOR = EnumSet.of(
 			AuthorityFuncao.EQUIPE_GESTOR_GERIR,
-			AuthorityFuncao.EQUIPE_PERFIL_TROCAR,
-			AuthorityFuncao.REDE_VER,
-			AuthorityFuncao.RESTAURANTE_GERIR,
 			AuthorityFuncao.PLATAFORMA_TI_GERIR,
 			AuthorityFuncao.PLATAFORMA_ADMIN_GERIR);
 
@@ -48,6 +45,7 @@ public class FuncaoAtribuicaoService {
 	private final FuncaoRedeRepository catalogo;
 	private final AuditoriaPermissaoRepository auditoria;
 	private final FuncaoConsulta consulta;
+	private final CargoRedeService cargos;
 
 	public FuncaoAtribuicaoService(
 			EscopoOperacao escopo,
@@ -57,7 +55,8 @@ public class FuncaoAtribuicaoService {
 			UsuarioRestauranteFuncaoRepository doRestaurante,
 			FuncaoRedeRepository catalogo,
 			AuditoriaPermissaoRepository auditoria,
-			FuncaoConsulta consulta) {
+			FuncaoConsulta consulta,
+			CargoRedeService cargos) {
 		this.escopo = escopo;
 		this.autorizacao = autorizacao;
 		this.usuarios = usuarios;
@@ -66,6 +65,7 @@ public class FuncaoAtribuicaoService {
 		this.catalogo = catalogo;
 		this.auditoria = auditoria;
 		this.consulta = consulta;
+		this.cargos = cargos;
 	}
 
 	@Transactional(readOnly = true)
@@ -81,11 +81,13 @@ public class FuncaoAtribuicaoService {
 		exigirMesmoRecorte(chamador, alvo, restauranteDo(alvo));
 		if (alvo.getRestaurante() == null) {
 			return globais.findByUsuarioId(alvoId).stream()
-					.map(linha -> new FuncaoDTO.Linha(linha.getAuthority(), linha.getAtribuidoPor(), linha.getAtribuidoEm()))
+					.map(linha -> new FuncaoDTO.Linha(
+							linha.getAuthority(), linha.getAtribuidoPor(), linha.getAtribuidoEm(), linha.getCargoOrigemId()))
 					.toList();
 		}
 		return doRestaurante.findByUsuarioIdAndRestauranteId(alvoId, alvo.getRestaurante().getId()).stream()
-				.map(linha -> new FuncaoDTO.Linha(linha.getAuthority(), linha.getAtribuidoPor(), linha.getAtribuidoEm()))
+				.map(linha -> new FuncaoDTO.Linha(
+						linha.getAuthority(), linha.getAtribuidoPor(), linha.getAtribuidoEm(), linha.getCargoOrigemId()))
 				.toList();
 	}
 
@@ -108,9 +110,29 @@ public class FuncaoAtribuicaoService {
 				conceder(chamador, alvo, restauranteId, authority);
 			}
 		}
+		if (pedido.authorities() != null) {
+			for (AuthorityFuncao authority : pedido.authorities()) {
+				conceder(chamador, alvo, restauranteId, authority);
+			}
+		}
+		if (pedido.cargos() != null) {
+			for (Long cargoId : pedido.cargos()) {
+				cargos.conceder(chamador, alvo, restauranteId, cargoId);
+			}
+		}
 		if (pedido.revogar() != null) {
 			for (AuthorityFuncao authority : pedido.revogar()) {
 				revogar(chamador, alvo, restauranteId, authority);
+			}
+		}
+		if (pedido.revogarAuthorities() != null) {
+			for (AuthorityFuncao authority : pedido.revogarAuthorities()) {
+				revogarAvulsa(chamador, alvo, restauranteId, authority);
+			}
+		}
+		if (pedido.revogarCargos() != null) {
+			for (Long cargoId : pedido.revogarCargos()) {
+				cargos.revogar(chamador, alvo, restauranteId, cargoId);
 			}
 		}
 	}
@@ -248,6 +270,27 @@ public class FuncaoAtribuicaoService {
 		auditar(chamador, alvo, restauranteId, authority, AcaoPermissao.REVOGAR);
 	}
 
+	private void revogarAvulsa(Usuario chamador, Usuario alvo, Long restauranteId, AuthorityFuncao authority) {
+		barrar(chamador, authority);
+		autorizacao.exigirPodeConceder(chamador, authority);
+		if (restauranteId == null) {
+			for (com.projeto.entity.UsuarioFuncaoGlobal linha : globais.findByUsuarioId(alvo.getId())) {
+				if (linha.getAuthority() == authority && linha.getCargoOrigemId() == null) {
+					globais.delete(linha);
+					auditar(chamador, alvo, null, authority, AcaoPermissao.REVOGAR);
+				}
+			}
+			return;
+		}
+		for (com.projeto.entity.UsuarioRestauranteFuncao linha : doRestaurante.findByUsuarioIdAndRestauranteId(
+				alvo.getId(), restauranteId)) {
+			if (linha.getAuthority() == authority && linha.getCargoOrigemId() == null) {
+				doRestaurante.delete(linha);
+				auditar(chamador, alvo, restauranteId, authority, AcaoPermissao.REVOGAR);
+			}
+		}
+	}
+
 	private void barrar(Usuario chamador, AuthorityFuncao authority) {
 		barrarPlataforma(authority);
 		// vinculo, nao funcao
@@ -288,7 +331,6 @@ public class FuncaoAtribuicaoService {
 			throw new AccessDeniedException("Acesso negado");
 		}
 		autorizacao.exigir(AuthorityFuncao.CATALOGO_FUNCOES_GERIR);
-		autorizacao.exigir(AuthorityFuncao.REDE_VER);
 		return carregar(escopo.usuario().getId());
 	}
 
@@ -305,7 +347,7 @@ public class FuncaoAtribuicaoService {
 		registro.setAutorId(chamador.getId());
 		registro.setAlvoId(alvo.getId());
 		registro.setRestauranteId(restauranteId);
-		registro.setAuthority(authority);
+		registro.setAuthority(authority.name());
 		registro.setAcao(acao);
 		auditoria.save(registro);
 	}
