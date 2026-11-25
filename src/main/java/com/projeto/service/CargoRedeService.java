@@ -166,7 +166,13 @@ public class CargoRedeService {
 			return item(cargo, authorities(cargo.getId()));
 		}
 		if (pedido.nome() != null && !pedido.nome().isBlank()) {
-			cargo.setNome(pedido.nome().trim());
+			String nome = pedido.nome().trim();
+			cargos.findByAdminIdAndNome(admin.getId(), nome)
+					.filter(outro -> !outro.getId().equals(cargo.getId()))
+					.ifPresent(outro -> {
+						throw new RegraDeNegocioException("Já existe um cargo com esse nome");
+					});
+			cargo.setNome(nome);
 		}
 		if (pedido.descricao() != null) {
 			cargo.setDescricao(pedido.descricao());
