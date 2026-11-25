@@ -7,7 +7,7 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 import com.projeto.entity.Usuario;
-import com.projeto.entity.enums.AuthorityFuncao;
+
 import com.projeto.entity.enums.Perfil;
 import com.projeto.catalogo.CatalogoFuncaoPadrao;
 
