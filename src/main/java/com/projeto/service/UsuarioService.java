@@ -111,7 +111,7 @@ public class UsuarioService {
 		usuario.setRestaurante(restaurante);
 		usuario.setAtivo(true);
 		Usuario salvo = usuarioRepository.save(usuario);
-		if (dto.cargos() == null && dto.authorities() == null) {
+		if (dto.cargos() == null || dto.cargos().isEmpty()) {
 			funcaoPadrao.aplicar(salvo);
 			cargoRede.vincularPacote(salvo);
 		} else {
@@ -119,8 +119,8 @@ public class UsuarioService {
 					restaurante.getId(),
 					List.of(),
 					List.of(),
-					dto.cargos() == null ? List.of() : dto.cargos(),
-					dto.authorities() == null ? List.of() : dto.authorities(),
+					dto.cargos(),
+					List.of(),
 					List.of(),
 					List.of()));
 		}

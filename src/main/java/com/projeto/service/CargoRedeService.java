@@ -83,6 +83,37 @@ public class CargoRedeService {
 				gravarItem(salvo.getId(), authority);
 			}
 		}
+		completar(adminId, "Analista", AuthorityFuncao.PEDIDO_LER);
+	}
+
+	private void completar(Long adminId, String nome, AuthorityFuncao authority) {
+		CargoRede cargo = cargos.findByAdminIdAndNome(adminId, nome).orElse(null);
+		if (cargo == null) {
+			return;
+		}
+		if (!authorities(cargo.getId()).contains(authority)) {
+			gravarItem(cargo.getId(), authority);
+		}
+		Set<String> pares = new LinkedHashSet<>();
+		for (UsuarioRestauranteFuncao linha : doRestaurante.findByCargoOrigemId(cargo.getId())) {
+			pares.add(linha.getUsuarioId() + ":" + linha.getRestauranteId());
+		}
+		for (String par : pares) {
+			String[] partes = par.split(":");
+			Long usuarioId = Long.valueOf(partes[0]);
+			Long restauranteId = Long.valueOf(partes[1]);
+			if (doRestaurante.existsByUsuarioIdAndRestauranteIdAndAuthority(usuarioId, restauranteId, authority)) {
+				continue;
+			}
+			UsuarioRestauranteFuncao linha = new UsuarioRestauranteFuncao();
+			linha.setUsuarioId(usuarioId);
+			linha.setRestauranteId(restauranteId);
+			linha.setAuthority(authority);
+			linha.setAtribuidoEm(Instant.now());
+			linha.setCargoOrigemId(cargo.getId());
+			doRestaurante.save(linha);
+			auditar(null, carregar(usuarioId), restauranteId, authority, AcaoPermissao.PROPAGACAO_CARGO);
+		}
 	}
 
 	@Transactional

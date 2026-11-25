@@ -50,10 +50,11 @@ public final class CargosPadrao {
 						supervisor),
 				new Definicao(
 						"Analista",
-						"Vê a análise operacional e a financeira, e lê cardápio e custo.",
+						"Vê a análise operacional e a financeira, o histórico de pedidos, o cardápio e o custo.",
 						EnumSet.of(
 								AuthorityFuncao.ANALISE_VER_OPERACIONAL,
 								AuthorityFuncao.ANALISE_VER_FINANCEIRO,
+								AuthorityFuncao.PEDIDO_LER,
 								AuthorityFuncao.CARDAPIO_LER,
 								AuthorityFuncao.CUSTO_LER)));
 	}

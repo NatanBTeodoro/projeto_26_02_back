@@ -2,6 +2,7 @@ package com.projeto.regra;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -25,6 +26,22 @@ class RegrasComandaTest {
 				RegraDeNegocioException.class,
 				() -> RegrasComanda.exigirMesmaMesa(4, 7));
 		assertEquals("A comanda já está na mesa 4", erro.getMessage());
+	}
+
+	@Test
+	void segundoPedidoDoMesmoClienteNaMesmaMesaReaproveitaAComanda() {
+		Long id = RegrasComanda.reaproveitar("Lia", 4, List.of(
+				new RegrasComanda.Aberta(8L, "Lia", 4),
+				new RegrasComanda.Aberta(3L, "lia", 4),
+				new RegrasComanda.Aberta(1L, "Lia", 2)));
+
+		assertEquals(3L, id);
+	}
+
+	@Test
+	void mesmoNomeEmMesaDiferenteNaoJuntaAComanda() {
+		assertNull(RegrasComanda.reaproveitar("Lia", 9, List.of(
+				new RegrasComanda.Aberta(1L, "Lia", 2))));
 	}
 
 	@Test

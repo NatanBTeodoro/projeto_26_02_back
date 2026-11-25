@@ -17,6 +17,9 @@ public final class RegrasComanda {
 	public record Ocupacao(String nome, Integer mesa) {
 	}
 
+	public record Aberta(Long id, String nome, Integer mesa) {
+	}
+
 	public static void exigirMesmaMesa(Integer mesaAtual, Integer mesaNova) {
 		if (mesaAtual != null && !mesaAtual.equals(mesaNova)) {
 			throw new RegraDeNegocioException("A comanda já está na mesa " + mesaAtual);
@@ -40,6 +43,27 @@ public final class RegrasComanda {
 			}
 		}
 		return colisao;
+	}
+
+	public static Long reaproveitar(String nome, Integer mesa, List<Aberta> abertas) {
+		if (nome == null || nome.isBlank() || mesa == null || abertas == null) {
+			return null;
+		}
+		String alvo = chave(nome);
+		Long mesmaMesa = null;
+		Long semMesa = null;
+		for (Aberta aberta : abertas) {
+			if (aberta == null || aberta.id() == null || aberta.nome() == null || !chave(aberta.nome()).equals(alvo)) {
+				continue;
+			}
+			if (aberta.mesa() != null && aberta.mesa().equals(mesa) && (mesmaMesa == null || aberta.id() < mesmaMesa)) {
+				mesmaMesa = aberta.id();
+			}
+			if (aberta.mesa() == null && (semMesa == null || aberta.id() < semMesa)) {
+				semMesa = aberta.id();
+			}
+		}
+		return mesmaMesa != null ? mesmaMesa : semMesa;
 	}
 
 	public static boolean colide(String nome, Set<String> nomesEmMaisDeUmaMesa) {

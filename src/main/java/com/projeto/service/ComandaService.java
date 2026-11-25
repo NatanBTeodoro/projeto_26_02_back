@@ -72,6 +72,10 @@ public class ComandaService {
 		if (usuarioId == null) {
 			throw new RegraDeNegocioException("Informe o usuário");
 		}
+		Usuario atual = escopo.usuario();
+		if (usuarioId.equals(atual.getId()) && EscopoVinculo.deUnidade(atual.getPerfil())) {
+			return responder(comandaRepository.findByRestauranteIdAndAbertaTrue(restaurante.getId()));
+		}
 		Usuario alvo = usuarioDoRestaurante(restaurante, usuarioId);
 		return responder(comandaRepository.findByRestauranteIdAndUsuarioIdOrderByIdDesc(restaurante.getId(), alvo.getId()));
 	}
@@ -162,6 +166,30 @@ public class ComandaService {
 			pedido.setNomeCliente(nome);
 			pedido.setMesa(mesa);
 		}
+	}
+
+	public Long idAbertaDoCliente(Long restauranteId, String nome, Integer mesa) {
+		if (restauranteId == null) {
+			return null;
+		}
+		return RegrasComanda.reaproveitar(nome, mesa, comandaRepository.findByRestauranteIdAndAbertaTrue(restauranteId).stream()
+				.map(comanda -> new RegrasComanda.Aberta(comanda.getId(), comanda.getNomeCliente(), comanda.getMesa()))
+				.toList());
+	}
+
+	public void descartarSeVazia(Long comandaId, Long restauranteId) {
+		if (comandaId == null || restauranteId == null) {
+			return;
+		}
+		Comanda comanda = comandaRepository.findById(comandaId).orElse(null);
+		if (comanda == null
+				|| comanda.getRestaurante() == null
+				|| !restauranteId.equals(comanda.getRestaurante().getId())
+				|| (comanda.getNomeCliente() != null && !comanda.getNomeCliente().isBlank())
+				|| !pedidoRepository.findByComandaId(comandaId).isEmpty()) {
+			return;
+		}
+		comandaRepository.delete(comanda);
 	}
 
 	public Set<String> nomesEmMaisDeUmaMesa(Long restauranteId) {

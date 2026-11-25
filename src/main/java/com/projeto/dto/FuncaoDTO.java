@@ -45,7 +45,10 @@ public class FuncaoDTO {
 			Long alvoId,
 			Long restauranteId,
 			String authority,
-			AcaoPermissao acao) {
+			AcaoPermissao acao,
+			String autorNome,
+			String alvoNome,
+			String restauranteNome) {
 	}
 
 	public record CargoItem(Long id, String nome, String descricao, boolean ativo, List<AuthorityFuncao> authorities) {

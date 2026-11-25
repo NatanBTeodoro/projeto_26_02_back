@@ -98,7 +98,17 @@ public class PedidoService {
 		Usuario atual = escopo.usuario();
 		Restaurante restaurante = escopo.exigirOperavel();
 		Usuario autorPedido = autorDoPedido(atual, restaurante, dto.usuarioId());
-		Comanda comanda = resolverComanda(atual, restaurante, autorPedido, dto.comandaId());
+		Long reuso = comandaService.idAbertaDoCliente(restaurante.getId(), dto.nomeCliente(), dto.mesa());
+		Comanda comanda;
+		if (reuso != null) {
+			comanda = comandaRepository.findById(reuso)
+					.orElseThrow(() -> new RecursoNaoEncontradoException("Comanda não encontrada"));
+			if (dto.comandaId() != null && !dto.comandaId().equals(reuso)) {
+				comandaService.descartarSeVazia(dto.comandaId(), restaurante.getId());
+			}
+		} else {
+			comanda = resolverComanda(atual, restaurante, autorPedido, dto.comandaId());
+		}
 		Pedido pedido = new Pedido();
 		pedido.setDataHora(dto.dataHora() == null ? agora : dto.dataHora());
 		pedido.setStatus(StatusPedido.ATIVO);
@@ -234,6 +244,9 @@ public class PedidoService {
 	private Usuario autorDoPedido(Usuario atual, Restaurante restaurante, Long usuarioId) {
 		if (EscopoVinculo.deUnidade(atual.getPerfil())) {
 			autorizacao.exigir(AuthorityFuncao.COMANDA_ABRIR);
+			if (usuarioId != null && usuarioId.equals(atual.getId())) {
+				return atual;
+			}
 			return usuarioDaUnidade(restaurante, usuarioId);
 		}
 		if (!autorizacao.tem(AuthorityFuncao.COMANDA_ABRIR)
@@ -273,7 +286,8 @@ public class PedidoService {
 		if (!comanda.getRestaurante().getId().equals(restaurante.getId())) {
 			throw new AccessDeniedException("Acesso negado");
 		}
-		if (comanda.getUsuario() == null || !comanda.getUsuario().getId().equals(autorPedido.getId())) {
+		boolean naPropriaConta = EscopoVinculo.deUnidade(atual.getPerfil()) && atual.getId().equals(autorPedido.getId());
+		if (!naPropriaConta && (comanda.getUsuario() == null || !comanda.getUsuario().getId().equals(autorPedido.getId()))) {
 			throw new RegraDeNegocioException("A comanda não pertence a este usuário");
 		}
 		if (!comanda.isAberta()) {

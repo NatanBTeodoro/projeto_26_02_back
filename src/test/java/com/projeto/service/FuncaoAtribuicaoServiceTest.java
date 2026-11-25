@@ -28,10 +28,12 @@ import com.projeto.entity.enums.AuthorityFuncao;
 import com.projeto.entity.enums.Perfil;
 import com.projeto.repository.AuditoriaPermissaoRepository;
 import com.projeto.repository.FuncaoRedeRepository;
+import com.projeto.repository.RestauranteRepository;
 import com.projeto.repository.UsuarioFuncaoGlobalRepository;
 import com.projeto.repository.UsuarioRepository;
 import com.projeto.repository.UsuarioRestauranteFuncaoRepository;
 import com.projeto.seguranca.EscopoOperacao;
+import com.projeto.util.exception.RegraDeNegocioException;
 
 @ExtendWith(MockitoExtension.class)
 class FuncaoAtribuicaoServiceTest {
@@ -52,6 +54,8 @@ class FuncaoAtribuicaoServiceTest {
 	private AuditoriaPermissaoRepository auditoria;
 	@Mock
 	private FuncaoConsulta consulta;
+	@Mock
+	private RestauranteRepository restaurantes;
 
 	private FuncaoAtribuicaoService service;
 	private Usuario admin;
@@ -62,7 +66,7 @@ class FuncaoAtribuicaoServiceTest {
 	@BeforeEach
 	void preparar() {
 		service = new FuncaoAtribuicaoService(
-				escopo, autorizacao, usuarios, globais, doRestaurante, catalogo, auditoria, consulta, org.mockito.Mockito.mock(CargoRedeService.class));
+				escopo, autorizacao, usuarios, globais, doRestaurante, catalogo, auditoria, consulta, org.mockito.Mockito.mock(CargoRedeService.class), restaurantes);
 		admin = pessoa(1L, Perfil.ADMINISTRADOR);
 		gestor = pessoa(2L, Perfil.GESTOR);
 		salao = pessoa(3L, Perfil.USUARIO);
@@ -89,7 +93,7 @@ class FuncaoAtribuicaoServiceTest {
 	void adminNaoConcedeFuncaoDePlataforma() {
 		quando(admin, salao);
 
-		assertThrows(AccessDeniedException.class, () -> service.aplicar(
+		assertThrows(RegraDeNegocioException.class, () -> service.aplicar(
 				3L, new FuncaoDTO.Atribuicao(9L, List.of(AuthorityFuncao.PLATAFORMA_TI_GERIR), List.of())));
 		verify(auditoria, never()).save(any());
 	}
@@ -97,11 +101,8 @@ class FuncaoAtribuicaoServiceTest {
 	@Test
 	void ninguemConcedeAuthorityQueNaoTem() {
 		quando(admin, salao);
-		doThrow(new AccessDeniedException("Acesso negado"))
-				.when(autorizacao)
-				.exigirPodeConceder(admin, AuthorityFuncao.AUDITORIA_VER);
 
-		assertThrows(AccessDeniedException.class, () -> service.aplicar(
+		assertThrows(RegraDeNegocioException.class, () -> service.aplicar(
 				3L, new FuncaoDTO.Atribuicao(9L, List.of(AuthorityFuncao.AUDITORIA_VER), List.of())));
 		verify(auditoria, never()).save(any());
 	}
@@ -124,7 +125,7 @@ class FuncaoAtribuicaoServiceTest {
 	void gestorNaoConcedeGestaoDeGestor() {
 		quando(gestor, salao);
 
-		assertThrows(AccessDeniedException.class, () -> service.aplicar(
+		assertThrows(RegraDeNegocioException.class, () -> service.aplicar(
 				3L, new FuncaoDTO.Atribuicao(9L, List.of(AuthorityFuncao.EQUIPE_GESTOR_GERIR), List.of())));
 		verify(auditoria, never()).save(any());
 	}
@@ -170,11 +171,19 @@ class FuncaoAtribuicaoServiceTest {
 				org.mockito.ArgumentMatchers.eq(3L), any(), any()))
 				.thenReturn(List.of(doAlvo));
 		when(usuarios.findParaEscopo(3L)).thenReturn(Optional.of(salao));
+		admin.setNome("Ana Admin");
+		salao.setNome("Bia");
+		casa.setNome("Casa Norte");
+		when(usuarios.findAllById(any())).thenReturn(List.of(admin, salao));
+		when(restaurantes.findAllById(any())).thenReturn(List.of(casa));
 
 		List<FuncaoDTO.AuditoriaItem> itens = service.consultarAuditoria(3L, 9L, null, null);
 
 		assertEquals(1, itens.size());
 		assertEquals(3L, itens.get(0).alvoId());
+		assertEquals("Ana Admin", itens.get(0).autorNome());
+		assertEquals("Bia", itens.get(0).alvoNome());
+		assertEquals("Casa Norte", itens.get(0).restauranteNome());
 	}
 
 	private void quando(Usuario chamador, Usuario alvo) {

@@ -4,7 +4,10 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.EnumSet;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.springframework.security.access.AccessDeniedException;
@@ -14,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.projeto.dto.FuncaoDTO;
 import com.projeto.entity.AuditoriaPermissao;
 import com.projeto.entity.FuncaoRede;
+import com.projeto.entity.Restaurante;
 import com.projeto.entity.Usuario;
 import com.projeto.entity.UsuarioFuncaoGlobal;
 import com.projeto.entity.UsuarioRestauranteFuncao;
@@ -22,6 +26,7 @@ import com.projeto.entity.enums.AuthorityFuncao;
 import com.projeto.entity.enums.Perfil;
 import com.projeto.repository.AuditoriaPermissaoRepository;
 import com.projeto.repository.FuncaoRedeRepository;
+import com.projeto.repository.RestauranteRepository;
 import com.projeto.repository.UsuarioFuncaoGlobalRepository;
 import com.projeto.repository.UsuarioRepository;
 import com.projeto.repository.UsuarioRestauranteFuncaoRepository;
@@ -46,6 +51,7 @@ public class FuncaoAtribuicaoService {
 	private final AuditoriaPermissaoRepository auditoria;
 	private final FuncaoConsulta consulta;
 	private final CargoRedeService cargos;
+	private final RestauranteRepository restaurantes;
 
 	public FuncaoAtribuicaoService(
 			EscopoOperacao escopo,
@@ -56,7 +62,8 @@ public class FuncaoAtribuicaoService {
 			FuncaoRedeRepository catalogo,
 			AuditoriaPermissaoRepository auditoria,
 			FuncaoConsulta consulta,
-			CargoRedeService cargos) {
+			CargoRedeService cargos,
+			RestauranteRepository restaurantes) {
 		this.escopo = escopo;
 		this.autorizacao = autorizacao;
 		this.usuarios = usuarios;
@@ -66,6 +73,7 @@ public class FuncaoAtribuicaoService {
 		this.auditoria = auditoria;
 		this.consulta = consulta;
 		this.cargos = cargos;
+		this.restaurantes = restaurantes;
 	}
 
 	@Transactional(readOnly = true)
@@ -213,9 +221,13 @@ public class FuncaoAtribuicaoService {
 		} else {
 			linhas = auditoria.findByDataHoraGreaterThanEqualAndDataHoraLessThanOrderByDataHoraDesc(inicio, fim);
 		}
-		return linhas.stream()
+		List<AuditoriaPermissao> daRede = linhas.stream()
 				.filter(linha -> restauranteId == null || restauranteId.equals(linha.getRestauranteId()))
 				.filter(linha -> pertenceARede(linha.getAlvoId()))
+				.toList();
+		Map<Long, String> pessoas = nomesDasPessoas(daRede);
+		Map<Long, String> casas = nomesDosRestaurantes(daRede);
+		return daRede.stream()
 				.map(linha -> new FuncaoDTO.AuditoriaItem(
 						linha.getId(),
 						linha.getDataHora(),
@@ -223,8 +235,75 @@ public class FuncaoAtribuicaoService {
 						linha.getAlvoId(),
 						linha.getRestauranteId(),
 						linha.getAuthority(),
-						linha.getAcao()))
+						linha.getAcao(),
+						nomeDoAutor(linha.getAutorId(), pessoas),
+						pessoas.getOrDefault(linha.getAlvoId(), "Conta removida"),
+						nomeDoRestaurante(linha.getRestauranteId(), casas)))
 				.toList();
+	}
+
+	private Map<Long, String> nomesDasPessoas(List<AuditoriaPermissao> linhas) {
+		Set<Long> ids = new HashSet<>();
+		for (AuditoriaPermissao linha : linhas) {
+			if (linha.getAutorId() != null) {
+				ids.add(linha.getAutorId());
+			}
+			if (linha.getAlvoId() != null) {
+				ids.add(linha.getAlvoId());
+			}
+		}
+		Map<Long, String> nomes = new HashMap<>();
+		if (ids.isEmpty()) {
+			return nomes;
+		}
+		usuarios.findAllById(ids).forEach(usuario -> nomes.put(usuario.getId(), nomeDe(usuario)));
+		return nomes;
+	}
+
+	private Map<Long, String> nomesDosRestaurantes(List<AuditoriaPermissao> linhas) {
+		Set<Long> ids = new HashSet<>();
+		for (AuditoriaPermissao linha : linhas) {
+			if (linha.getRestauranteId() != null) {
+				ids.add(linha.getRestauranteId());
+			}
+		}
+		Map<Long, String> nomes = new HashMap<>();
+		if (ids.isEmpty()) {
+			return nomes;
+		}
+		restaurantes.findAllById(ids).forEach(restaurante -> nomes.put(restaurante.getId(), nomeDe(restaurante)));
+		return nomes;
+	}
+
+	private String nomeDoAutor(Long autorId, Map<Long, String> pessoas) {
+		if (autorId == null) {
+			return "Sistema";
+		}
+		return pessoas.getOrDefault(autorId, "Conta removida");
+	}
+
+	private String nomeDoRestaurante(Long restauranteId, Map<Long, String> casas) {
+		if (restauranteId == null) {
+			return "—";
+		}
+		return casas.getOrDefault(restauranteId, "Restaurante removido");
+	}
+
+	private String nomeDe(Usuario usuario) {
+		if (usuario.getNome() != null && !usuario.getNome().isBlank()) {
+			return usuario.getNome().trim();
+		}
+		if (usuario.getEmail() != null && !usuario.getEmail().isBlank()) {
+			return usuario.getEmail().trim();
+		}
+		return "Conta removida";
+	}
+
+	private String nomeDe(Restaurante restaurante) {
+		if (restaurante.getNome() != null && !restaurante.getNome().isBlank()) {
+			return restaurante.getNome().trim();
+		}
+		return "Restaurante removido";
 	}
 
 	private void conceder(Usuario chamador, Usuario alvo, Long restauranteId, AuthorityFuncao authority) {
