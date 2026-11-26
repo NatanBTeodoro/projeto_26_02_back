@@ -12,6 +12,7 @@ services:
     region: oregon
     dockerfilePath: ./Dockerfile
     dockerContext: .
+    autoDeployTrigger: checksPass
     healthCheckPath: /actuator/health
     envVars:
       - key: PGHOST

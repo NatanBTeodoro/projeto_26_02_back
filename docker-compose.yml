@@ -2,15 +2,15 @@ services:
   db:
     image: postgres:16-alpine
     environment:
-      POSTGRES_DB: menu_engineering
-      POSTGRES_USER: quadrante
-      POSTGRES_PASSWORD: quadrante
+      POSTGRES_DB: ${PGDATABASE:-menu_engineering}
+      POSTGRES_USER: ${PGUSER:-quadrante}
+      POSTGRES_PASSWORD: ${PGPASSWORD:-quadrante}
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U quadrante -d menu_engineering"]
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -22,12 +22,19 @@ services:
         condition: service_healthy
     environment:
       PGHOST: db
-      PGPORT: 5432
-      PGDATABASE: menu_engineering
-      PGUSER: quadrante
-      PGPASSWORD: quadrante
-      PGSSLMODE: disable
-      DB_POOL: 5
+      PGPORT: ${PGPORT:-5432}
+      PGDATABASE: ${PGDATABASE:-menu_engineering}
+      PGUSER: ${PGUSER:-quadrante}
+      PGPASSWORD: ${PGPASSWORD:-quadrante}
+      PGSSLMODE: ${PGSSLMODE:-disable}
+      DB_POOL: ${DB_POOL:-5}
+      PORT: ${PORT:-8080}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5173}
+      SEMENTE: ${SEMENTE:-true}
+      SEMENTE_EMAIL: ${SEMENTE_EMAIL:-admin@admin.com}
+      SEMENTE_SENHA: ${SEMENTE_SENHA:-Admin123}
+      SEMENTE_TI_EMAIL: ${SEMENTE_TI_EMAIL:-ti@admin.com}
+      SEMENTE_TI_SENHA: ${SEMENTE_TI_SENHA:-Ti123!}
     ports:
       - "8080:8080"
 
